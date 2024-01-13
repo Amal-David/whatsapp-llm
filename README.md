@@ -14,3 +14,5 @@ Where:
 - `<responder>` is the name of the person who responds to the prompter.
 
 The script will output a CSV file named 'output_<current_date_and_time>.csv'. The CSV file will have two columns: 'prompt' and 'completion'. Each row represents a conversation pair, with 'prompt' being the message from the prompter and 'completion' being the response from the responder. This CSV file can be used to create a dataset for instruction following tasks.
+
+This project is inspired by [chat_scrape](https://github.com/afiqhatta/chat_scrape).
