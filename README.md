@@ -6,12 +6,13 @@ Sensitive information is redacted using a predefined regex pattern. Non-ASCII ch
 
 To run the script, use the following command:
 ```python
-python parser.py <path_to_file> <prompter> <responder>
+python parser.py <path_to_file> <prompter> <responder> <your_name>
 ```
 Where:
 - `<path_to_file>` is the path to your WhatsApp chat file.
 - `<prompter>` is the name of the person who initiates the conversation.
 - `<responder>` is the name of the person who responds to the prompter.
+- `<your_name>` is a name to be added which can be either prompter or responder.
 
 The script will output a CSV file named 'output_<current_date_and_time>.csv'. The CSV file will have two columns: 'prompt' and 'completion'. Each row represents a conversation pair, with 'prompt' being the message from the prompter and 'completion' being the response from the responder. This CSV file can be used to create a dataset for instruction following tasks.
 
