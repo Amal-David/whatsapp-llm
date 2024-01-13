@@ -27,11 +27,9 @@ def format_for_personal_llm_fine_tuning(df, your_name, system_prompt, context_le
 
     return formatted_data
 
-import re
-
 def remove_sensitive_info(text):
     """
-    Function to remove sensitive information and specific message types from the text.
+    Function to remove sensitive information, specific message types, and URLs from the text.
     """
     # Regex pattern to identify and remove credit card numbers
     text = re.sub(r'\b(?:\d[ -]*?){13,16}\b', '[REDACTED CREDIT CARD]', text)
@@ -46,15 +44,13 @@ def remove_sensitive_info(text):
     text = re.sub(r'\b\d{4}\b', '[REDACTED PIN]', text)
 
     # Remove specific WhatsApp message types and encryption notice
-    patterns_to_remove = [
-        'image omitted',
-        'Contact card omitted',
-        'video omitted',
-        'Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.',
-        r'https?://\S+'  # Regex to remove URLs
-    ]
-    for pattern in patterns_to_remove:
-        text = re.sub(pattern, '[REDACTED MESSAGE]', text)
+    text = re.sub(r'image omitted', '[REDACTED IMAGE]', text)
+    text = re.sub(r'Contact card omitted', '[REDACTED CONTACT CARD]', text)
+    text = re.sub(r'video omitted', '[REDACTED VIDEO]', text)
+    text = re.sub(r'Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.', '[REDACTED ENCRYPTION NOTICE]', text)
+
+    # Regex to remove URLs (both http and https)
+    text = re.sub(r'https?://\S+', '[REDACTED URL]', text)
 
     return text
 
