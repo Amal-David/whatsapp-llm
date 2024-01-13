@@ -61,7 +61,7 @@ def remove_sensitive_info(text):
     return text
 
 
-def converter_with_debug(filepath: str, prompter: str, responder: str) -> pd.DataFrame:
+def converter_with_debug(filepath: str, prompter: str, responder: str, your_name: str) -> pd.DataFrame:
     """
     Converter function to parse chat data, remove sensitive information,
     and create a DataFrame. It pairs one prompt message with one response message.
@@ -111,7 +111,6 @@ def converter_with_debug(filepath: str, prompter: str, responder: str) -> pd.Dat
     df = pd.DataFrame.from_dict(result_dict, orient='index')
 
     # Call the format_for_personal_llm_fine_tuning function
-    your_name = "Amal David"  # Replace with your name
     system_prompt = "Mimic the conversational style of the user, considering the context of the conversation."  # Replace with your system prompt
     formatted_data = format_for_personal_llm_fine_tuning(df_finetune, your_name, system_prompt)
 
@@ -121,14 +120,16 @@ if __name__ == "__main__":
     parser.add_argument('path', type=str, help='Path to file')
     parser.add_argument('prompter', type=str, help='Name of Prompter')
     parser.add_argument('responder', type=str, help='Name of Responder')
+    parser.add_argument('your_name', type=str, help='Your Name')
 
     args = parser.parse_args()
     path = args.path
     prompter = args.prompter
     responder = args.responder
+    your_name = args.your_name
 
     # Convert and parse chat data
-    parsed_data, finetune_data = converter_with_debug(path, prompter, responder)
+    parsed_data, finetune_data = converter_with_debug(path, prompter, responder, your_name)
     # print(finetune_data)
 
     # Save the original parsed data
