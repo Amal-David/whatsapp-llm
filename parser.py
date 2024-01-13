@@ -6,7 +6,7 @@ import datetime
 import json
 
 # New function to format data for personal LLM fine-tuning
-def format_for_personal_llm_fine_tuning(df, your_name, system_prompt, context_length=3):
+def jsonl_data(df, your_name, system_prompt, context_length=3):
     """
     Function to format chat data for fine-tuning a personal LLM. Includes context in each entry.
     """
@@ -88,7 +88,7 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
             match = re.search(pattern, line)
             if match:
                 date, time, author, message = match.groups()
-                df_finetune = df_finetune.append({'Author': author, 'Message': message}, ignore_index=True)
+                df_finetune.loc[len(df_finetune)] = {'Author': author, 'Message': message}
 
                 if author == prompter:
                     if last_responder is None:  # Waiting for a response
@@ -112,7 +112,7 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
 
     # Call the format_for_personal_llm_fine_tuning function
     system_prompt = "Mimic the conversational style of the user, considering the context of the conversation."  # Replace with your system prompt
-    formatted_data = format_for_personal_llm_fine_tuning(df_finetune, your_name, system_prompt)
+    formatted_data = jsonl_data(df_finetune, your_name, system_prompt)
 
     return df, formatted_data
 if __name__ == "__main__":
