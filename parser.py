@@ -27,15 +27,17 @@ def format_for_personal_llm_fine_tuning(df, your_name, system_prompt, context_le
 
     return formatted_data
 
+import re
+
 def remove_sensitive_info(text):
     """
-    Function to remove sensitive information like credit card numbers, passwords, OTPs, and PINs from the text.
+    Function to remove sensitive information and specific message types from the text.
     """
     # Regex pattern to identify and remove credit card numbers
     text = re.sub(r'\b(?:\d[ -]*?){13,16}\b', '[REDACTED CREDIT CARD]', text)
 
     # Regex pattern to remove basic password patterns
-    text = re.sub(r'(?i)\b(password|passwd|pass)[ :]+[^\s]+\b', '[REDACTED PASSWORD]', text)
+    text = re.sub(r'(?i)\b(password|passwd|pass|pwd)[ :]+[^\s]+\b', '[REDACTED PASSWORD]', text)
 
     # Regex pattern to remove OTPs (assumed to be 4-6 digits)
     text = re.sub(r'\b\d{4,6}\b', '[REDACTED OTP]', text)
@@ -43,7 +45,19 @@ def remove_sensitive_info(text):
     # Regex pattern to remove PINs (assumed to be 4 digits)
     text = re.sub(r'\b\d{4}\b', '[REDACTED PIN]', text)
 
+    # Remove specific WhatsApp message types and encryption notice
+    patterns_to_remove = [
+        'image omitted',
+        'Contact card omitted',
+        'video omitted',
+        'Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.',
+        r'https?://\S+'  # Regex to remove URLs
+    ]
+    for pattern in patterns_to_remove:
+        text = re.sub(pattern, '[REDACTED MESSAGE]', text)
+
     return text
+
 
 def converter_with_debug(filepath: str, prompter: str, responder: str) -> pd.DataFrame:
     """
