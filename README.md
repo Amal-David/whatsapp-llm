@@ -2,7 +2,7 @@
 
 This project is a WhatsApp chat parser. It processes your WhatsApp chat data, redacts sensitive information, and converts it into a CSV file and jsonl. This jsonl file can be used to directly finetune any OSS model for instruction following tasks.
 
-Sensitive information is redacted using a predefined regex pattern. Non-ASCII characters, except those in the Tamil language, are also removed.
+Sensitive information such as phone numbers, credit card numbers, OTP are redacted using a predefined regex pattern. Non-ASCII characters, except those in the Tamil language, are also removed.
 
 To run the script, use the following command:
 ```python
