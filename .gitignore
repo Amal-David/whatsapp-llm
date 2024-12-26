@@ -163,3 +163,7 @@ cython_debug/
 formatted*
 output*
 my-app*
+
+.DS_Store
+Ankit.txt
+cleaned_data.jsonl
