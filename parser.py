@@ -25,19 +25,92 @@ class ChatMessage:
     message: str
     timestamp: datetime.datetime
     
+class PersonalStyleExtractor:
+    def __init__(self):
+        self.emoji_pattern = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]')
+        self.slang_abbreviations = {
+            'lol', 'omg', 'idk', 'tbh', 'imo', 'fyi', 'brb', 'btw', 'afk',
+            'nvm', 'aka', 'asap', 'fomo', 'fwiw', 'iirc', 'imho', 'irl',
+            'jk', 'lmk', 'nbd', 'np', 'nsfw', 'rn', 'tbf', 'tfw', 'tl;dr',
+            'tysm', 'w/', 'w/o', 'ya', 'ymmv', 'yolo'
+        }
+        
+    def analyze_style(self, messages: List[str]) -> Dict:
+        """Analyze personal conversation style metrics."""
+        style_metrics = {
+            'avg_message_length': 0,
+            'emoji_usage_rate': 0,
+            'slang_usage_rate': 0,
+            'punctuation_patterns': defaultdict(int),
+            'capitalization_rate': 0,
+            'common_phrases': defaultdict(int),
+            'response_patterns': []
+        }
+        
+        total_messages = len(messages)
+        if total_messages == 0:
+            return style_metrics
+            
+        # Analyze messages
+        total_length = 0
+        emoji_count = 0
+        slang_count = 0
+        capitalized_count = 0
+        
+        for msg in messages:
+            # Message length
+            total_length += len(msg)
+            
+            # Emoji usage
+            emoji_count += len(self.emoji_pattern.findall(msg))
+            
+            # Slang usage
+            words = msg.lower().split()
+            slang_count += sum(1 for word in words if word in self.slang_abbreviations)
+            
+            # Capitalization
+            if msg and msg[0].isupper():
+                capitalized_count += 1
+            
+            # Punctuation patterns
+            for char in '.,!?...':
+                if char in msg:
+                    style_metrics['punctuation_patterns'][char] += 1
+            
+            # Common phrases (3-grams)
+            words = msg.split()
+            for i in range(len(words)-2):
+                phrase = ' '.join(words[i:i+3])
+                style_metrics['common_phrases'][phrase] += 1
+        
+        # Calculate averages
+        style_metrics['avg_message_length'] = total_length / total_messages
+        style_metrics['emoji_usage_rate'] = emoji_count / total_messages
+        style_metrics['slang_usage_rate'] = slang_count / total_messages
+        style_metrics['capitalization_rate'] = capitalized_count / total_messages
+        
+        # Keep only most common phrases
+        style_metrics['common_phrases'] = dict(
+            sorted(style_metrics['common_phrases'].items(), 
+                  key=lambda x: x[1], 
+                  reverse=True)[:10]
+        )
+        
+        return style_metrics
+
 class DataCleaner:
     @staticmethod
     def clean_message(message: str) -> str:
-        """Clean and normalize message text."""
+        """Clean and normalize message text while preserving personal style."""
         if not message:
             return ""
         
-        # Basic cleaning
+        # Basic cleaning while preserving emojis and style
         message = message.strip()
         message = ' '.join(message.split())
         
-        # Remove special characters but keep essential punctuation
-        message = re.sub(r'[^\w\s.,!?;:\-\'\"()]', '', message)
+        # Remove URLs but keep other elements
+        message = re.sub(r'http\S+|www.\S+', '[URL]', message)
         
         return message
 
@@ -75,7 +148,6 @@ class ChatParser:
             if match:
                 date, time, author, message = match.groups()
                 try:
-                    # Parse timestamp
                     timestamp = datetime.datetime.strptime(f"{date} {time}", "%m/%d/%y %I:%M:%S %p")
                     return ChatMessage(
                         author=author.strip(),
@@ -87,56 +159,12 @@ class ChatParser:
                     continue
         return None
 
-class SensitiveInfoRemover:
-    def __init__(self):
-        self.patterns = {
-            'credit_card': r'\b(?:\d[ -]*?){13,16}\b',
-            'phone': r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
-            'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-            'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
-            'password': r'(?i)\b(password|passwd|pass|pwd)[ :]+[^\s]+\b',
-            'otp': r'\b\d{4,6}\b',
-            'pin': r'\b\d{4}\b'
-        }
-
-    def remove_sensitive_info(self, text: str) -> str:
-        """Remove various types of sensitive information from text."""
-        for info_type, pattern in self.patterns.items():
-            text = re.sub(pattern, f'[REDACTED_{info_type.upper()}]', text)
-        return text
-
-class LLMFormatter:
-    @staticmethod
-    def format_llama2(context: str, response: str, system_prompt: str) -> str:
-        """Format data for Llama-2 style models."""
-        return f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{context} [/INST] {response} </s>"
-
-    @staticmethod
-    def format_mistral(context: str, response: str, system_prompt: str) -> str:
-        """Format data for Mistral style models."""
-        return f"<s>[INST] {system_prompt}\n\n{context} [/INST] {response} </s>"
-
-    @staticmethod
-    def format_falcon(context: str, response: str, system_prompt: str) -> str:
-        """Format data for Falcon style models."""
-        return f"System: {system_prompt}\nUser: {context}\nAssistant: {response}"
-
-    @staticmethod
-    def format_gpt(context: str, response: str, system_prompt: str) -> str:
-        """Format data for GPT style models."""
-        return {
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": context},
-                {"role": "assistant", "content": response}
-            ]
-        }
-
 class ConversationManager:
     def __init__(self, context_length: int = 3):
         self.context_length = context_length
         self.current_conversation: List[ChatMessage] = []
         self.conversation_id = 0
+        self.style_extractor = PersonalStyleExtractor()
 
     def format_context(self, messages: List[ChatMessage]) -> str:
         """Format conversation context."""
@@ -152,20 +180,40 @@ class ConversationManager:
             
         return None
 
-def jsonl_data(df: pd.DataFrame, your_name: str, system_prompt: str, 
-               llm_format: LLMFormat = LLMFormat.LLAMA2, context_length: int = 3) -> List[Dict]:
-    """
-    Enhanced function to format chat data for fine-tuning various LLM models.
-    """
-    formatter = LLMFormatter()
+def create_system_prompt(style_metrics: Dict) -> str:
+    """Create a personalized system prompt based on style metrics."""
+    prompt = "You are now mimicking a person with the following conversation style:\n"
+    prompt += f"- Average message length: {style_metrics['avg_message_length']:.1f} characters\n"
+    prompt += f"- Emoji usage: {'High' if style_metrics['emoji_usage_rate'] > 0.3 else 'Moderate' if style_metrics['emoji_usage_rate'] > 0.1 else 'Low'}\n"
+    prompt += f"- Slang usage: {'High' if style_metrics['slang_usage_rate'] > 0.2 else 'Moderate' if style_metrics['slang_usage_rate'] > 0.1 else 'Low'}\n"
+    prompt += f"- Capitalization: {'Usually' if style_metrics['capitalization_rate'] > 0.7 else 'Sometimes' if style_metrics['capitalization_rate'] > 0.3 else 'Rarely'} starts sentences with capital letters\n"
+    
+    if style_metrics['common_phrases']:
+        prompt += "- Frequently used phrases:\n"
+        for phrase, count in list(style_metrics['common_phrases'].items())[:5]:
+            prompt += f"  * {phrase}\n"
+    
+    prompt += "\nMimic this conversational style while maintaining context and natural flow."
+    return prompt
+
+def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMFormat.LLAMA2, 
+               context_length: int = 3) -> Tuple[List[Dict], Dict]:
+    """Enhanced function to format chat data for fine-tuning with style analysis."""
     conversation_manager = ConversationManager(context_length)
     formatted_data = []
+    
+    # Extract personal style
+    your_messages = df[df['Author'] == your_name]['Message'].tolist()
+    style_metrics = PersonalStyleExtractor().analyze_style(your_messages)
+    system_prompt = create_system_prompt(style_metrics)
+    
+    formatter = LLMFormatter()
     
     for _, row in df.iterrows():
         message = ChatMessage(
             author=row['Author'],
             message=row['Message'],
-            timestamp=datetime.datetime.now()  # Using current time as default
+            timestamp=datetime.datetime.now()
         )
         
         if not DataCleaner.validate_message(message.message):
@@ -198,15 +246,12 @@ def jsonl_data(df: pd.DataFrame, your_name: str, system_prompt: str,
         
         conversation_manager.add_message(message)
     
-    return formatted_data
+    return formatted_data, style_metrics
 
 def converter_with_debug(filepath: str, prompter: str, responder: str, your_name: str,
-                        llm_format: LLMFormat = LLMFormat.LLAMA2) -> Tuple[pd.DataFrame, List[Dict]]:
-    """
-    Enhanced converter function with better error handling and debugging.
-    """
+                        llm_format: LLMFormat = LLMFormat.LLAMA2) -> Tuple[pd.DataFrame, List[Dict], Dict]:
+    """Enhanced converter function with style analysis."""
     chat_parser = ChatParser()
-    sensitive_info_remover = SensitiveInfoRemover()
     
     df_finetune = pd.DataFrame(columns=['Author', 'Message', 'Timestamp'])
     result_dict = defaultdict(dict)
@@ -215,10 +260,6 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
     try:
         with open(filepath, 'r', encoding='utf-8') as fp:
             for line in fp:
-                # Remove sensitive information
-                line = sensitive_info_remover.remove_sensitive_info(line)
-                
-                # Parse the chat message
                 chat_message = chat_parser.parse_line(line)
                 if chat_message:
                     df_finetune.loc[len(df_finetune)] = {
@@ -242,14 +283,13 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
     # Convert result_dict to DataFrame
     df = pd.DataFrame.from_dict(result_dict, orient='index')
     
-    # Format data for fine-tuning
-    system_prompt = "Mimic the conversational style of the user, considering the context of the conversation."
-    formatted_data = jsonl_data(df_finetune, your_name, system_prompt, llm_format)
+    # Format data for fine-tuning with style analysis
+    formatted_data, style_metrics = jsonl_data(df_finetune, your_name, llm_format)
     
-    return df, formatted_data
+    return df, formatted_data, style_metrics
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process WhatsApp chat data for LLM fine-tuning.')
+    parser = argparse.ArgumentParser(description='Process WhatsApp chat data for personal style LLM fine-tuning.')
     parser.add_argument('path', type=str, help='Path to chat file')
     parser.add_argument('prompter', type=str, help='Name of Prompter')
     parser.add_argument('responder', type=str, help='Name of Responder')
@@ -262,8 +302,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     try:
-        # Convert and parse chat data
-        parsed_data, finetune_data = converter_with_debug(
+        # Convert and parse chat data with style analysis
+        parsed_data, finetune_data, style_metrics = converter_with_debug(
             args.path,
             args.prompter,
             args.responder,
@@ -282,6 +322,12 @@ if __name__ == "__main__":
             for item in finetune_data:
                 f.write(json.dumps(item) + '\n')
         logger.info(f"Saved formatted data to {jsonl_file}")
+        
+        # Save style metrics
+        style_file = f'style_metrics_{args.your_name}.json'
+        with open(style_file, 'w') as f:
+            json.dump(style_metrics, f, indent=2)
+        logger.info(f"Saved style metrics to {style_file}")
         
     except Exception as e:
         logger.error(f"Error during processing: {e}")

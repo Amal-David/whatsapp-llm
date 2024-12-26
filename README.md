@@ -1,192 +1,183 @@
-# WhatsApp Chat Parser for LLM Fine-tuning
+# Personal Chat Style Cloning Tool
 
-A Python tool to parse WhatsApp chat exports and format them for fine-tuning various Large Language Models (LLMs).
+A Python toolkit for creating a personalized AI chatbot that mimics your WhatsApp conversation style. This tool analyzes your chat patterns, writing style, and personality traits to create a fine-tuned language model that can interact just like you.
 
 ## Features
 
-- Support for multiple LLM formats:
+- **Advanced Style Analysis**:
+  - Message length patterns
+  - Emoji usage frequency
+  - Slang and abbreviation patterns
+  - Capitalization habits
+  - Punctuation patterns
+  - Common phrases and expressions
+  - Response patterns
+
+- **Multiple LLM Support**:
   - Llama-2
   - Mistral
   - Falcon
   - GPT
-- Intelligent conversation context management
-- Comprehensive sensitive information removal
-- Advanced data cleaning and validation
-- Proper timestamp handling
-- Detailed logging and error handling
-- Built-in fine-tuning support using HuggingFace
+
+- **Optimization Features**:
+  - Parameter-Efficient Fine-Tuning (LoRA)
+  - 8-bit quantization support
+  - Gradient accumulation
+  - Mixed precision training
 
 ## Requirements
 
 ```bash
-pip install pandas transformers torch datasets tensorboard
+pip install pandas transformers torch datasets tensorboard peft
 ```
 
-## Usage
+## Creating Your Digital Twin
 
-### Basic Usage
+### Step 1: Process Your Chat Data
+
+Export your WhatsApp chat and process it:
 
 ```bash
-python parser.py chat.txt "Prompter" "Responder" "YourName"
+python parser.py chat.txt "YourName" "OtherPerson" "YourName"
+```
+
+This will generate:
+- `formatted_YourName.jsonl`: Training data
+- `style_metrics_YourName.json`: Your conversation style analysis
+
+### Step 2: Fine-tune the Model
+
+Choose a base model and fine-tune it with your style:
+
+```bash
+python finetune.py \
+    --data_path formatted_YourName.jsonl \
+    --model_name "mistralai/Mistral-7B-v0.1" \
+    --output_dir "./my_chatbot" \
+    --style_metrics_path style_metrics_YourName.json \
+    --use_peft \
+    --use_8bit
 ```
 
 ### Advanced Usage
 
-1. Using different LLM formats:
+1. Different LLM formats:
 ```bash
-python parser.py chat.txt "Prompter" "Responder" "YourName" --llm_format mistral
+python parser.py chat.txt "YourName" "OtherPerson" "YourName" --llm_format mistral
 ```
 
-2. Adjusting conversation context length:
+2. Adjust context length:
 ```bash
-python parser.py chat.txt "Prompter" "Responder" "YourName" --context_length 5
+python parser.py chat.txt "YourName" "OtherPerson" "YourName" --context_length 5
 ```
 
-### Fine-tuning
-
-After generating the formatted data, you can fine-tune a model using the provided `finetune.py` script:
-
+3. Memory-efficient training:
 ```bash
 python finetune.py \
-    --data_path formatted_prompter.jsonl \
+    --data_path formatted_YourName.jsonl \
     --model_name "meta-llama/Llama-2-7b-chat-hf" \
-    --output_dir "./fine_tuned_model" \
-    --batch_size 4 \
-    --learning_rate 2e-5 \
-    --num_epochs 3
+    --use_8bit \
+    --use_peft \
+    --batch_size 1 \
+    --gradient_accumulation_steps 8
 ```
 
-#### Fine-tuning Arguments
+## Style Analysis Features
 
-- `--data_path`: Path to the JSONL file containing the training data
-- `--model_name`: Name or path of the base model to fine-tune
-- `--output_dir`: Directory to save the fine-tuned model
-- `--batch_size`: Training batch size (default: 4)
-- `--learning_rate`: Learning rate (default: 2e-5)
-- `--num_epochs`: Number of training epochs (default: 3)
-- `--max_length`: Maximum sequence length (default: 2048)
-- `--gradient_accumulation_steps`: Number of gradient accumulation steps (default: 4)
-- `--tokenizer_name`: Name or path of the tokenizer if different from model
+The tool analyzes various aspects of your chat style:
 
-#### Recommended Models for Fine-tuning
+### Message Patterns
+- Average message length
+- Response timing patterns
+- Message structure preferences
 
-1. For Llama2 format:
-   - meta-llama/Llama-2-7b-chat-hf
-   - meta-llama/Llama-2-13b-chat-hf
+### Language Usage
+- Emoji frequency and patterns
+- Slang and abbreviation usage
+- Capitalization habits
+- Punctuation style
+- Common phrases and expressions
 
-2. For Mistral format:
-   - mistralai/Mistral-7B-v0.1
-   - mistralai/Mistral-7B-Instruct-v0.1
+### Conversation Flow
+- Response patterns
+- Context utilization
+- Topic transition style
 
-3. For Falcon format:
-   - tiiuae/falcon-7b
-   - tiiuae/falcon-40b
+## Fine-tuning Options
 
-4. For GPT format:
-   - gpt2
-   - gpt2-medium
-   - gpt2-large
+### Model Selection Guide
 
-### Arguments
+1. For Personal Use (Lower Resources):
+   - Mistral 7B
+   - Llama-2 7B
+   - GPT-2 Medium
 
-- `path`: Path to the WhatsApp chat export file
-- `prompter`: Name of the person asking questions
-- `responder`: Name of the person responding
-- `your_name`: Your name in the chat
-- `--llm_format`: Target LLM format (choices: llama2, mistral, falcon, gpt)
-- `--context_length`: Number of previous messages to include as context (default: 3)
+2. For Better Quality (Higher Resources):
+   - Llama-2 13B
+   - Falcon 40B
+
+### Optimization Techniques
+
+1. Memory Optimization:
+   - 8-bit quantization
+   - LoRA fine-tuning
+   - Gradient accumulation
+
+2. Training Optimization:
+   - Learning rate adaptation
+   - Batch size adjustment
+   - Warmup steps
+   - Mixed precision training
 
 ## Output Files
 
-The script generates two output files:
+The process generates several files:
 
-1. `output_YYYYMMDD_HHMMSS.csv`: Original parsed conversation pairs
-2. `formatted_[prompter].jsonl`: Formatted data ready for LLM fine-tuning
+1. `output_YYYYMMDD_HHMMSS.csv`: Original conversation pairs
+2. `formatted_[YourName].jsonl`: Training data
+3. `style_metrics_[YourName].json`: Style analysis
+4. Fine-tuned model in `output_dir`:
+   - Model weights
+   - Tokenizer
+   - Style configuration
+   - Training logs
 
-## Data Processing Features
+## Best Practices
 
-### Sensitive Information Removal
-- Credit card numbers
-- Phone numbers
-- Email addresses
-- IP addresses
-- Passwords
-- OTPs and PINs
+1. **Data Quality**:
+   - Use at least 1000 messages for good results
+   - Include diverse conversations
+   - Clean out irrelevant messages
 
-### Message Validation
-- Removes empty or too short messages
-- Filters out media messages
-- Removes system messages
-- Cleans special characters while preserving essential punctuation
+2. **Model Selection**:
+   - Start with smaller models (7B)
+   - Use 8-bit quantization for larger models
+   - Enable LoRA for efficient training
 
-### Conversation Context
-- Maintains conversation flow
-- Configurable context length
-- Proper message attribution
-- Timestamp preservation
-
-## LLM Format Examples
-
-### Llama-2
-```
-<s>[INST] <<SYS>>
-System prompt
-<</SYS>>
-
-Context [/INST] Response </s>
-```
-
-### Mistral
-```
-<s>[INST] System prompt
-
-Context [/INST] Response </s>
-```
-
-### Falcon
-```
-System: System prompt
-User: Context
-Assistant: Response
-```
-
-### GPT
-```json
-{
-    "messages": [
-        {"role": "system", "content": "System prompt"},
-        {"role": "user", "content": "Context"},
-        {"role": "assistant", "content": "Response"}
-    ]
-}
-```
-
-## Error Handling
-
-The script includes comprehensive error handling and logging:
-- Input file validation
-- Timestamp parsing errors
-- Data processing issues
-- Output file writing errors
-
-## Fine-tuning Tips
-
-1. **Hardware Requirements**:
-   - 7B models: At least 16GB GPU VRAM
-   - 13B models: At least 24GB GPU VRAM
-   - 40B+ models: Multiple GPUs recommended
-
-2. **Optimization Tips**:
-   - Use gradient accumulation for larger effective batch sizes
-   - Enable mixed precision training (fp16)
-   - Start with a small learning rate (2e-5 to 5e-5)
+3. **Training Tips**:
    - Monitor training with TensorBoard
+   - Start with default hyperparameters
+   - Adjust based on style metrics
+   - Use gradient accumulation for stability
 
-3. **Best Practices**:
-   - Clean and validate your data thoroughly
-   - Use appropriate context length for your use case
-   - Save checkpoints regularly
-   - Test the model periodically during training
+4. **Hardware Requirements**:
+   - 7B models: 16GB+ GPU VRAM
+   - 13B models: 24GB+ GPU VRAM
+   - 40B models: Multiple GPUs
+
+## Troubleshooting
+
+1. **Memory Issues**:
+   - Enable 8-bit quantization
+   - Reduce batch size
+   - Increase gradient accumulation
+   - Use LoRA fine-tuning
+
+2. **Quality Issues**:
+   - Increase training data
+   - Adjust context length
+   - Try different base models
+   - Fine-tune hyperparameters
 
 ## Contributing
 

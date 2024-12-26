@@ -10,7 +10,9 @@ import torch
 import argparse
 import logging
 import os
-from typing import Dict, List
+import json
+from typing import Dict, List, Optional
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,9 +48,11 @@ def load_and_process_data(
 def setup_model_and_tokenizer(
     model_name: str,
     tokenizer_name: str = None,
-    device_map: str = "auto"
+    device_map: str = "auto",
+    load_in_8bit: bool = False,
+    style_metrics: Optional[Dict] = None
 ) -> tuple:
-    """Setup the model and tokenizer."""
+    """Setup the model and tokenizer with optimizations for personal style training."""
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_name or model_name,
         trust_remote_code=True
@@ -56,28 +60,65 @@ def setup_model_and_tokenizer(
     
     # Add special tokens if they don't exist
     special_tokens = {"pad_token": "[PAD]"}
+    if style_metrics:
+        # Add common phrases as special tokens for better preservation
+        for phrase in style_metrics.get('common_phrases', {}).keys():
+            special_tokens[f"phrase_{len(special_tokens)}"] = phrase
+    
     tokenizer.add_special_tokens(special_tokens)
     
-    # Load the model
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        trust_remote_code=True,
-        device_map=device_map,
-        torch_dtype=torch.float16
-    )
+    # Load the model with optimizations
+    if load_in_8bit:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            load_in_8bit=True,
+            device_map=device_map,
+        )
+        model = prepare_model_for_kbit_training(model)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            device_map=device_map,
+            torch_dtype=torch.float16
+        )
     
     # Resize token embeddings
     model.resize_token_embeddings(len(tokenizer))
     
     return model, tokenizer
 
+def setup_peft_config(model_name: str) -> LoraConfig:
+    """Setup Parameter-Efficient Fine-Tuning configuration."""
+    return LoraConfig(
+        r=16,  # Rank
+        lora_alpha=32,  # Alpha scaling
+        target_modules=["q_proj", "v_proj"],  # Target attention modules
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM"
+    )
+
 def train(
     model,
     tokenized_dataset,
     training_args: TrainingArguments,
-    data_collator
+    data_collator,
+    style_metrics: Optional[Dict] = None
 ) -> None:
-    """Train the model."""
+    """Train the model with style-aware optimizations."""
+    # If we have style metrics, adjust training parameters
+    if style_metrics:
+        # Adjust learning rate based on dataset size and style complexity
+        msg_length = style_metrics.get('avg_message_length', 0)
+        if msg_length > 100:
+            training_args.learning_rate *= 0.8  # Reduce learning rate for complex styles
+        
+        # Adjust batch size based on message length
+        if msg_length > 200:
+            training_args.per_device_train_batch_size = max(1, training_args.per_device_train_batch_size - 2)
+    
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -87,12 +128,16 @@ def train(
     
     trainer.train()
     
-    # Save the model
+    # Save the model and style metrics
     trainer.save_model()
-    logger.info(f"Model saved to {training_args.output_dir}")
+    if style_metrics:
+        with open(os.path.join(training_args.output_dir, "style_metrics.json"), "w") as f:
+            json.dump(style_metrics, f, indent=2)
+    
+    logger.info(f"Model and style metrics saved to {training_args.output_dir}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Fine-tune a language model on WhatsApp chat data.')
+    parser = argparse.ArgumentParser(description='Fine-tune a language model to mimic personal chat style.')
     parser.add_argument('--data_path', type=str, required=True,
                         help='Path to the JSONL file containing the training data')
     parser.add_argument('--model_name', type=str, required=True,
@@ -111,14 +156,34 @@ def main():
                         help='Number of gradient accumulation steps')
     parser.add_argument('--tokenizer_name', type=str, default=None,
                         help='Name or path of the tokenizer (if different from model)')
+    parser.add_argument('--style_metrics_path', type=str, default=None,
+                        help='Path to the style metrics JSON file')
+    parser.add_argument('--use_8bit', action='store_true',
+                        help='Use 8-bit quantization for training')
+    parser.add_argument('--use_peft', action='store_true',
+                        help='Use Parameter-Efficient Fine-Tuning (LoRA)')
     
     args = parser.parse_args()
+    
+    # Load style metrics if available
+    style_metrics = None
+    if args.style_metrics_path and os.path.exists(args.style_metrics_path):
+        with open(args.style_metrics_path, 'r') as f:
+            style_metrics = json.load(f)
     
     # Setup model and tokenizer
     model, tokenizer = setup_model_and_tokenizer(
         args.model_name,
-        args.tokenizer_name
+        args.tokenizer_name,
+        load_in_8bit=args.use_8bit,
+        style_metrics=style_metrics
     )
+    
+    # Apply LoRA if requested
+    if args.use_peft:
+        logger.info("Applying LoRA for parameter-efficient fine-tuning")
+        peft_config = setup_peft_config(args.model_name)
+        model = get_peft_model(model, peft_config)
     
     # Load and process data
     tokenized_dataset = load_and_process_data(
@@ -142,6 +207,11 @@ def main():
         push_to_hub=False,
         report_to="tensorboard",
         load_best_model_at_end=True,
+        # Add warmup steps for better style adaptation
+        warmup_steps=100,
+        # Add evaluation steps
+        evaluation_strategy="steps",
+        eval_steps=100,
     )
     
     # Setup data collator
@@ -151,7 +221,7 @@ def main():
     )
     
     # Train the model
-    train(model, tokenized_dataset, training_args, data_collator)
+    train(model, tokenized_dataset, training_args, data_collator, style_metrics)
 
 if __name__ == "__main__":
     main() 
