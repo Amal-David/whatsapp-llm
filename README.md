@@ -1,19 +1,128 @@
-# whatsapp-llm
+# WhatsApp Chat Parser for LLM Fine-tuning
 
-This project processes your WhatsApp chat data, redacts sensitive information, and converts it into a CSV file and jsonl. This jsonl file can be used to directly finetune any OSS model for instruction following tasks.
+A Python tool to parse WhatsApp chat exports and format them for fine-tuning various Large Language Models (LLMs).
 
-Sensitive information such as phone numbers, credit card numbers, OTP are redacted using a predefined regex pattern. Non-ASCII characters, except those in the Tamil language, are also removed.
+## Features
 
-To run the script, use the following command:
-```python
-python parser.py <path_to_file> <prompter> <responder> <your_name>
+- Support for multiple LLM formats:
+  - Llama-2
+  - Mistral
+  - Falcon
+  - GPT
+- Intelligent conversation context management
+- Comprehensive sensitive information removal
+- Advanced data cleaning and validation
+- Proper timestamp handling
+- Detailed logging and error handling
+
+## Requirements
+
+```bash
+pip install pandas
 ```
-Where:
-- `<path_to_file>` is the path to your WhatsApp chat file.
-- `<prompter>` is the name of the person who initiates the conversation.
-- `<responder>` is the name of the person who responds to the prompter.
-- `<your_name>` is a name to be added which can be either prompter or responder.
 
-The script will output a CSV file named 'output_<current_date_and_time>.csv' and jsonl file named formatted_data.jsonl. The CSV file will have two columns: 'prompt' and 'completion'. Each row represents a conversation pair, with 'prompt' being the message from the prompter and 'completion' being the response from the responder. The jsonl file will be a dataset of your personal conversation.
+## Usage
 
-This project is inspired by [chat_scrape](https://github.com/afiqhatta/chat_scrape).
+### Basic Usage
+
+```bash
+python parser.py chat.txt "Prompter" "Responder" "YourName"
+```
+
+### Advanced Usage
+
+1. Using different LLM formats:
+```bash
+python parser.py chat.txt "Prompter" "Responder" "YourName" --llm_format mistral
+```
+
+2. Adjusting conversation context length:
+```bash
+python parser.py chat.txt "Prompter" "Responder" "YourName" --context_length 5
+```
+
+### Arguments
+
+- `path`: Path to the WhatsApp chat export file
+- `prompter`: Name of the person asking questions
+- `responder`: Name of the person responding
+- `your_name`: Your name in the chat
+- `--llm_format`: Target LLM format (choices: llama2, mistral, falcon, gpt)
+- `--context_length`: Number of previous messages to include as context (default: 3)
+
+## Output Files
+
+The script generates two output files:
+
+1. `output_YYYYMMDD_HHMMSS.csv`: Original parsed conversation pairs
+2. `formatted_[prompter].jsonl`: Formatted data ready for LLM fine-tuning
+
+## Data Processing Features
+
+### Sensitive Information Removal
+- Credit card numbers
+- Phone numbers
+- Email addresses
+- IP addresses
+- Passwords
+- OTPs and PINs
+
+### Message Validation
+- Removes empty or too short messages
+- Filters out media messages
+- Removes system messages
+- Cleans special characters while preserving essential punctuation
+
+### Conversation Context
+- Maintains conversation flow
+- Configurable context length
+- Proper message attribution
+- Timestamp preservation
+
+## LLM Format Examples
+
+### Llama-2
+```
+<s>[INST] <<SYS>>
+System prompt
+<</SYS>>
+
+Context [/INST] Response </s>
+```
+
+### Mistral
+```
+<s>[INST] System prompt
+
+Context [/INST] Response </s>
+```
+
+### Falcon
+```
+System: System prompt
+User: Context
+Assistant: Response
+```
+
+### GPT
+```json
+{
+    "messages": [
+        {"role": "system", "content": "System prompt"},
+        {"role": "user", "content": "Context"},
+        {"role": "assistant", "content": "Response"}
+    ]
+}
+```
+
+## Error Handling
+
+The script includes comprehensive error handling and logging:
+- Input file validation
+- Timestamp parsing errors
+- Data processing issues
+- Output file writing errors
+
+## Contributing
+
+Feel free to submit issues and enhancement requests!
