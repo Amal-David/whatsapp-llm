@@ -167,3 +167,7 @@ my-app*
 .DS_Store
 Ankit.txt
 cleaned_data.jsonl*.bak
+
+.DS_Store.bak
+Ankit.txt.bak
+cleaned_data.jsonl*
