@@ -14,11 +14,12 @@ A Python tool to parse WhatsApp chat exports and format them for fine-tuning var
 - Advanced data cleaning and validation
 - Proper timestamp handling
 - Detailed logging and error handling
+- Built-in fine-tuning support using HuggingFace
 
 ## Requirements
 
 ```bash
-pip install pandas
+pip install pandas transformers torch datasets tensorboard
 ```
 
 ## Usage
@@ -40,6 +41,51 @@ python parser.py chat.txt "Prompter" "Responder" "YourName" --llm_format mistral
 ```bash
 python parser.py chat.txt "Prompter" "Responder" "YourName" --context_length 5
 ```
+
+### Fine-tuning
+
+After generating the formatted data, you can fine-tune a model using the provided `finetune.py` script:
+
+```bash
+python finetune.py \
+    --data_path formatted_prompter.jsonl \
+    --model_name "meta-llama/Llama-2-7b-chat-hf" \
+    --output_dir "./fine_tuned_model" \
+    --batch_size 4 \
+    --learning_rate 2e-5 \
+    --num_epochs 3
+```
+
+#### Fine-tuning Arguments
+
+- `--data_path`: Path to the JSONL file containing the training data
+- `--model_name`: Name or path of the base model to fine-tune
+- `--output_dir`: Directory to save the fine-tuned model
+- `--batch_size`: Training batch size (default: 4)
+- `--learning_rate`: Learning rate (default: 2e-5)
+- `--num_epochs`: Number of training epochs (default: 3)
+- `--max_length`: Maximum sequence length (default: 2048)
+- `--gradient_accumulation_steps`: Number of gradient accumulation steps (default: 4)
+- `--tokenizer_name`: Name or path of the tokenizer if different from model
+
+#### Recommended Models for Fine-tuning
+
+1. For Llama2 format:
+   - meta-llama/Llama-2-7b-chat-hf
+   - meta-llama/Llama-2-13b-chat-hf
+
+2. For Mistral format:
+   - mistralai/Mistral-7B-v0.1
+   - mistralai/Mistral-7B-Instruct-v0.1
+
+3. For Falcon format:
+   - tiiuae/falcon-7b
+   - tiiuae/falcon-40b
+
+4. For GPT format:
+   - gpt2
+   - gpt2-medium
+   - gpt2-large
 
 ### Arguments
 
@@ -122,6 +168,25 @@ The script includes comprehensive error handling and logging:
 - Timestamp parsing errors
 - Data processing issues
 - Output file writing errors
+
+## Fine-tuning Tips
+
+1. **Hardware Requirements**:
+   - 7B models: At least 16GB GPU VRAM
+   - 13B models: At least 24GB GPU VRAM
+   - 40B+ models: Multiple GPUs recommended
+
+2. **Optimization Tips**:
+   - Use gradient accumulation for larger effective batch sizes
+   - Enable mixed precision training (fp16)
+   - Start with a small learning rate (2e-5 to 5e-5)
+   - Monitor training with TensorBoard
+
+3. **Best Practices**:
+   - Clean and validate your data thoroughly
+   - Use appropriate context length for your use case
+   - Save checkpoints regularly
+   - Test the model periodically during training
 
 ## Contributing
 
