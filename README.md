@@ -31,6 +31,106 @@ A Python toolkit for creating a personalized AI chatbot that mimics your WhatsAp
 pip install pandas transformers torch datasets tensorboard peft
 ```
 
+## How Style Analysis Works
+
+The tool performs a comprehensive analysis of your chat style through multiple layers:
+
+### 1. Message Structure Analysis
+
+#### Length Patterns
+- Calculates average message length
+- Tracks message length distribution
+- Identifies typical message structures
+```python
+avg_message_length = total_length / total_messages
+```
+
+#### Emoji Usage
+- Uses Unicode pattern matching for emoji detection
+- Calculates emoji frequency per message
+- Identifies favorite/most used emojis
+```python
+emoji_pattern = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]')
+emoji_count = len(emoji_pattern.findall(message))
+emoji_rate = emoji_count / total_messages
+```
+
+#### Slang and Abbreviations
+- Maintains a comprehensive slang dictionary
+- Tracks usage frequency of common internet abbreviations
+- Examples: 'lol', 'omg', 'idk', 'tbh', etc.
+```python
+slang_words = {'lol', 'omg', 'idk', 'tbh', ...}
+slang_rate = slang_count / total_messages
+```
+
+### 2. Writing Style Metrics
+
+#### Capitalization Patterns
+- Analyzes sentence start capitalization
+- Tracks ALL CAPS usage
+- Identifies stylistic capitalization choices
+```python
+capitalization_rate = capitalized_messages / total_messages
+```
+
+#### Punctuation Analysis
+- Tracks usage of different punctuation marks
+- Identifies multiple punctuation patterns (e.g., "!!!")
+- Analyzes sentence ending styles
+```python
+punctuation_patterns = {
+    '.': frequency,
+    '!': frequency,
+    '?': frequency,
+    '...': frequency
+}
+```
+
+#### Common Phrases
+- Extracts and ranks frequently used phrases (3-grams)
+- Identifies personal catchphrases
+- Tracks conversation starters/enders
+```python
+for i in range(len(words)-2):
+    phrase = ' '.join(words[i:i+3])
+    common_phrases[phrase] += 1
+```
+
+### 3. Style Integration
+
+#### System Prompt Generation
+The analysis generates a detailed system prompt:
+```
+You are now mimicking a person with the following conversation style:
+- Average message length: X characters
+- Emoji usage: [High/Moderate/Low]
+- Slang usage: [High/Moderate/Low]
+- Capitalization: [Usually/Sometimes/Rarely] starts sentences with capital letters
+- Frequently used phrases:
+  * [phrase 1]
+  * [phrase 2]
+  ...
+```
+
+#### Training Optimization
+Style metrics influence training parameters:
+- Adjusts learning rate based on style complexity
+- Modifies batch size for longer messages
+- Adds common phrases as special tokens
+
+### 4. Style Preservation
+
+#### Token Management
+- Adds common phrases as special tokens
+- Preserves emoji and special characters
+- Maintains punctuation patterns
+
+#### Data Cleaning
+- Removes URLs while preserving style
+- Keeps emojis and formatting
+- Preserves personal abbreviations
+
 ## Creating Your Digital Twin
 
 ### Step 1: Process Your Chat Data
