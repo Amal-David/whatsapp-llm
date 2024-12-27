@@ -8,6 +8,7 @@ import logging
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,9 +16,21 @@ logger = logging.getLogger(__name__)
 
 class LLMFormat(Enum):
     LLAMA2 = "llama2"
+    LLAMA3 = "llama3"
     MISTRAL = "mistral"
     FALCON = "falcon"
     GPT = "gpt"
+    QWEN = "qwen"
+
+    @classmethod
+    def from_string(cls, s: str) -> 'LLMFormat':
+        try:
+            return cls[s.upper()]
+        except KeyError:
+            try:
+                return next(m for m in cls if m.value.lower() == s.lower())
+            except StopIteration:
+                raise ValueError(f"Unknown LLM format: {s}")
 
 @dataclass
 class ChatMessage:
@@ -136,19 +149,42 @@ class DataCleaner:
 class ChatParser:
     def __init__(self):
         self.date_patterns = [
+            # Standard WhatsApp format (12/31/23, 11:59:59 PM)
             r"(\d{1,2}/\d{1,2}/\d{2}),\s*(\d{1,2}:\d{2}:\d{2}\s*[APM]{2})\s*-\s*([^:]+):\s*(.+)",
+            # Without seconds (12/31/23, 11:59 PM)
             r"(\d{1,2}/\d{1,2}/\d{2}),\s*(\d{1,2}:\d{2}\s*[APM]{2})\s*-\s*([^:]+):\s*(.+)",
-            r"\[(\d{1,2}/\d{1,2}/\d{2}),\s*(\d{1,2}:\d{2}:\d{2}\s*[APM]{2})\]\s*([^:]+):\s*(.+)"
+            # Bracketed format [12/31/23, 11:59:59 PM]
+            r"\[(\d{1,2}/\d{1,2}/\d{2}),\s*(\d{1,2}:\d{2}:\d{2}\s*[APM]{2})\]\s*([^:]+):\s*(.+)",
+            # International format (31/12/23)
+            r"(\d{1,2}/\d{1,2}/\d{2}),\s*(\d{1,2}:\d{2}(?::\d{2})?\s*[APM]{2})\s*-\s*([^:]+):\s*(.+)",
+            # ISO-like format (2023-12-31)
+            r"(\d{4}-\d{2}-\d{2}),\s*(\d{1,2}:\d{2}(?::\d{2})?\s*[APM]{2})\s*-\s*([^:]+):\s*(.+)"
         ]
 
     def parse_line(self, line: str) -> Optional[ChatMessage]:
         """Parse a single line of chat."""
+        line = line.strip()
+        if not line:
+            return None
+            
         for pattern in self.date_patterns:
             match = re.search(pattern, line)
             if match:
                 date, time, author, message = match.groups()
                 try:
-                    timestamp = datetime.datetime.strptime(f"{date} {time}", "%m/%d/%y %I:%M:%S %p")
+                    # Try multiple date formats
+                    for date_format in ["%m/%d/%y", "%d/%m/%y", "%Y-%m-%d"]:
+                        try:
+                            if "-" in date:
+                                date_format = "%Y-%m-%d"
+                            timestamp = datetime.datetime.strptime(f"{date} {time}", f"{date_format} %I:%M:%S %p")
+                            break
+                        except ValueError:
+                            try:
+                                timestamp = datetime.datetime.strptime(f"{date} {time}", f"{date_format} %I:%M %p")
+                                break
+                            except ValueError:
+                                continue
                     return ChatMessage(
                         author=author.strip(),
                         message=message.strip(),
@@ -196,6 +232,44 @@ def create_system_prompt(style_metrics: Dict) -> str:
     prompt += "\nMimic this conversational style while maintaining context and natural flow."
     return prompt
 
+class LLMFormatter:
+    @staticmethod
+    def format_llama2(context: str, response: str, system_prompt: str) -> str:
+        """Format data for Llama-2 style models."""
+        return f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{context} [/INST] {response} </s>"
+
+    @staticmethod
+    def format_llama3(context: str, response: str, system_prompt: str) -> str:
+        """Format data for Llama-3 style models."""
+        # Llama3 uses a slightly different format with tiktoken-based tokenizer
+        return f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{context} [/INST] {response} </s>"
+
+    @staticmethod
+    def format_mistral(context: str, response: str, system_prompt: str) -> str:
+        """Format data for Mistral style models."""
+        return f"<s>[INST] {system_prompt}\n\n{context} [/INST] {response} </s>"
+
+    @staticmethod
+    def format_falcon(context: str, response: str, system_prompt: str) -> str:
+        """Format data for Falcon style models."""
+        return f"System: {system_prompt}\nUser: {context}\nAssistant: {response}"
+
+    @staticmethod
+    def format_gpt(context: str, response: str, system_prompt: str) -> str:
+        """Format data for GPT style models."""
+        return {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": context},
+                {"role": "assistant", "content": response}
+            ]
+        }
+        
+    @staticmethod
+    def format_qwen(context: str, response: str, system_prompt: str) -> str:
+        """Format data for Qwen style models."""
+        return f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{context}<|im_end|>\n<|im_start|>assistant\n{response}<|im_end|>"
+
 def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMFormat.LLAMA2, 
                context_length: int = 3) -> Tuple[List[Dict], Dict]:
     """Enhanced function to format chat data for fine-tuning with style analysis."""
@@ -213,7 +287,7 @@ def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMForm
         message = ChatMessage(
             author=row['Author'],
             message=row['Message'],
-            timestamp=datetime.datetime.now()
+            timestamp=row['Timestamp']  # Use the actual timestamp from the DataFrame
         )
         
         if not DataCleaner.validate_message(message.message):
@@ -229,10 +303,14 @@ def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMForm
             # Format based on selected LLM type
             if llm_format == LLMFormat.LLAMA2:
                 formatted_text = formatter.format_llama2(context, message.message, system_prompt)
+            elif llm_format == LLMFormat.LLAMA3:
+                formatted_text = formatter.format_llama3(context, message.message, system_prompt)
             elif llm_format == LLMFormat.MISTRAL:
                 formatted_text = formatter.format_mistral(context, message.message, system_prompt)
             elif llm_format == LLMFormat.FALCON:
                 formatted_text = formatter.format_falcon(context, message.message, system_prompt)
+            elif llm_format == LLMFormat.QWEN:
+                formatted_text = formatter.format_qwen(context, message.message, system_prompt)
             else:  # GPT format
                 formatted_text = formatter.format_gpt(context, message.message, system_prompt)
             
@@ -240,7 +318,7 @@ def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMForm
                 "text": formatted_text,
                 "conversation_id": len(formatted_data),
                 "turn_number": len(conversation_manager.current_conversation),
-                "timestamp": message.timestamp.isoformat()
+                "timestamp": message.timestamp.isoformat() if message.timestamp else None
             }
             formatted_data.append(entry)
         
@@ -253,13 +331,19 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
     """Enhanced converter function with style analysis."""
     chat_parser = ChatParser()
     
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Chat file not found: {filepath}")
+        
+    if os.path.getsize(filepath) == 0:
+        raise ValueError("Chat file is empty")
+    
     df_finetune = pd.DataFrame(columns=['Author', 'Message', 'Timestamp'])
     result_dict = defaultdict(dict)
     count = 0
     
     try:
         with open(filepath, 'r', encoding='utf-8') as fp:
-            for line in fp:
+            for line_num, line in enumerate(fp, 1):
                 chat_message = chat_parser.parse_line(line)
                 if chat_message:
                     df_finetune.loc[len(df_finetune)] = {
@@ -273,12 +357,17 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
                     elif chat_message.author == responder and count in result_dict:
                         result_dict[count]['completion'] = chat_message.message
                         count += 1
+                elif line.strip():  # Log only non-empty unmatched lines
+                    logger.warning(f"Line {line_num} did not match any pattern: {line.strip()}")
     
     except Exception as e:
         logger.error(f"Error processing file: {e}")
         raise
     
-    logger.info(f"Processed {count} conversation pairs")
+    if count == 0:
+        logger.warning("No valid conversation pairs found in the chat file")
+    else:
+        logger.info(f"Processed {count} conversation pairs")
     
     # Convert result_dict to DataFrame
     df = pd.DataFrame.from_dict(result_dict, orient='index')
