@@ -15,9 +15,11 @@ A Python toolkit for creating a personalized AI clone of yourself using WhatsApp
 
 - **Multiple LLM Support**:
   - Llama-2
+  - Llama-3
   - Mistral
   - Falcon
   - GPT
+  - Qwen
 
 - **Optimization Features**:
   - Parameter-Efficient Fine-Tuning (LoRA)
@@ -31,123 +33,71 @@ A Python toolkit for creating a personalized AI clone of yourself using WhatsApp
 pip install pandas transformers torch datasets tensorboard peft
 ```
 
-## How Style Analysis Works
+## Getting Started
 
-The tool performs a comprehensive analysis of your chat style through multiple layers:
+### 1. Chat Export and Parsing
 
-### 1. Message Structure Analysis
+#### Chat Format Requirements
 
-#### Length Patterns
-- Calculates average message length
-- Tracks message length distribution
-- Identifies typical message structures
-```python
-avg_message_length = total_length / total_messages
+Your WhatsApp chat export should follow this format:
+```
+[MM/DD/YY, HH:MM:SS AM/PM] Author: Message text here
 ```
 
-#### Emoji Usage
-- Uses Unicode pattern matching for emoji detection
-- Calculates emoji frequency per message
-- Identifies favorite/most used emojis
-```python
-emoji_pattern = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]')
-emoji_count = len(emoji_pattern.findall(message))
-emoji_rate = emoji_count / total_messages
+Example:
+```
+[01/13/24, 12:24:48 AM] Alex: Have you finished that project for work?
+[01/13/24, 12:52:48 AM] Jamie: I love those! Send me the title later.
 ```
 
-#### Slang and Abbreviations
-- Maintains a comprehensive slang dictionary
-- Tracks usage frequency of common internet abbreviations
-- Examples: 'lol', 'omg', 'idk', 'tbh', etc.
-```python
-slang_words = {'lol', 'omg', 'idk', 'tbh', ...}
-slang_rate = slang_count / total_messages
-```
+#### Supported Date Formats
+1. Standard WhatsApp format: `[MM/DD/YY, HH:MM:SS AM/PM]`
+2. Without seconds: `[MM/DD/YY, HH:MM AM/PM]`
+3. International format: `[DD/MM/YY, HH:MM:SS AM/PM]`
+4. ISO-like format: `[YYYY-MM-DD, HH:MM:SS AM/PM]`
 
-### 2. Writing Style Metrics
+#### Export Instructions
+1. Open WhatsApp chat
+2. Tap ⋮ (three dots) > More > Export chat
+3. Choose 'Without media'
+4. Save the .txt file
 
-#### Capitalization Patterns
-- Analyzes sentence start capitalization
-- Tracks ALL CAPS usage
-- Identifies stylistic capitalization choices
-```python
-capitalization_rate = capitalized_messages / total_messages
-```
+#### What to Include/Exclude
+- ✅ Include:
+  - Regular text messages
+  - Emoji messages
+  - URLs (they will be cleaned automatically)
+  - Normal conversation text
 
-#### Punctuation Analysis
-- Tracks usage of different punctuation marks
-- Identifies multiple punctuation patterns (e.g., "!!!")
-- Analyzes sentence ending styles
-```python
-punctuation_patterns = {
-    '.': frequency,
-    '!': frequency,
-    '?': frequency,
-    '...': frequency
-}
-```
+- ❌ Exclude:
+  - Media messages (images, videos, documents)
+  - System messages
+  - Group settings changes
+  - Contact cards
+  - Location shares
 
-#### Common Phrases
-- Extracts and ranks frequently used phrases (3-grams)
-- Identifies personal catchphrases
-- Tracks conversation starters/enders
-```python
-for i in range(len(words)-2):
-    phrase = ' '.join(words[i:i+3])
-    common_phrases[phrase] += 1
-```
+#### Parsing Your Chat
 
-### 3. Style Integration
-
-#### System Prompt Generation
-The analysis generates a detailed system prompt:
-```
-You are now mimicking a person with the following conversation style:
-- Average message length: X characters
-- Emoji usage: [High/Moderate/Low]
-- Slang usage: [High/Moderate/Low]
-- Capitalization: [Usually/Sometimes/Rarely] starts sentences with capital letters
-- Frequently used phrases:
-  * [phrase 1]
-  * [phrase 2]
-  ...
-```
-
-#### Training Optimization
-Style metrics influence training parameters:
-- Adjusts learning rate based on style complexity
-- Modifies batch size for longer messages
-- Adds common phrases as special tokens
-
-### 4. Style Preservation
-
-#### Token Management
-- Adds common phrases as special tokens
-- Preserves emoji and special characters
-- Maintains punctuation patterns
-
-#### Data Cleaning
-- Removes URLs while preserving style
-- Keeps emojis and formatting
-- Preserves personal abbreviations
-
-## Creating Your Digital Twin
-
-### Step 1: Process Your Chat Data
-
-Export your WhatsApp chat and process it:
-
+Basic usage:
 ```bash
 python parser.py chat.txt "YourName" "OtherPerson" "YourName"
 ```
 
-This will generate:
+Advanced usage:
+```bash
+python parser.py chat.txt "YourName" "OtherPerson" "YourName" \
+    --llm_format mistral \
+    --context_length 5
+```
+
+This generates:
+- `output_YYYYMMDD_HHMMSS.csv`: Original conversation pairs
 - `formatted_YourName.jsonl`: Training data
-- `style_metrics_YourName.json`: Your conversation style analysis
+- `style_metrics_YourName.json`: Style analysis
 
-### Step 2: Fine-tune the Model
+### 2. Fine-tuning Process
 
-Choose a base model and fine-tune it with your style:
+After parsing your chat data, you can fine-tune a model:
 
 ```bash
 python finetune.py \
@@ -159,350 +109,200 @@ python finetune.py \
     --use_8bit
 ```
 
-### Advanced Usage
-
-1. Different LLM formats:
-```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName" --llm_format mistral
-```
-
-2. Adjust context length:
-```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName" --context_length 5
-```
-
-3. Memory-efficient training:
-```bash
-python finetune.py \
-    --data_path formatted_YourName.jsonl \
-    --model_name "meta-llama/Llama-2-7b-chat-hf" \
-    --use_8bit \
-    --use_peft \
-    --batch_size 1 \
-    --gradient_accumulation_steps 8
-```
-
-## Style Analysis Features
-
-The tool analyzes various aspects of your chat style:
-
-### Message Patterns
-- Average message length
-- Response timing patterns
-- Message structure preferences
-
-### Language Usage
-- Emoji frequency and patterns
-- Slang and abbreviation usage
-- Capitalization habits
-- Punctuation style
-- Common phrases and expressions
-
-### Conversation Flow
-- Response patterns
-- Context utilization
-- Topic transition style
-
-## Fine-tuning Options
-
-### Model Selection Guide
+#### Model Selection Guide
 
 1. For Personal Use (Lower Resources):
-   - Llama3-8B
-   - Qwen-7B
-   - Mistral 7B
-   - Llama-2 7B
-   - GPT-2 Medium
+   - Llama3-8B (16GB VRAM)
+   - Qwen-7B (16GB VRAM)
+   - Mistral 7B (16GB VRAM)
+   - Llama-2 7B (16GB VRAM)
 
 2. For Better Quality (Higher Resources):
-   - Llama3-70B
-   - Qwen-14B
-   - Llama-2 13B
-   - Falcon 40B
+   - Llama3-70B (80GB VRAM)
+   - Qwen-14B (28GB VRAM)
+   - Llama-2 13B (24GB VRAM)
+   - Falcon 40B (Multiple GPUs)
 
-### Llama3 Model Support
+## How Style Analysis Works
 
-The tool now includes special support for Meta's Llama3 models with optimizations:
+The tool performs a comprehensive analysis of your chat style through multiple layers:
 
-#### Llama3-Specific Features
-- BF16 precision training (recommended by Meta)
-- Flash Attention 2 support
-- Optimized LoRA configuration
-- Tiktoken-based tokenizer support
-- Proper padding token handling
+### Message Structure Analysis
 
-#### Using Llama3 Models
+- **Length Patterns**
+  - Average message length
+  - Message length distribution
+  - Typical response lengths
 
-1. Basic Usage:
-```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName" --llm_format llama3
-```
+- **Emoji Usage**
+  - Detection and frequency analysis
+  - Favorite emoji patterns
+  - Contextual emoji usage
 
-2. Fine-tuning with Llama3:
-```bash
-python finetune.py \
-    --data_path formatted_YourName.jsonl \
-    --model_name "meta-llama/Llama-3-8b" \
-    --output_dir "./my_chatbot" \
-    --style_metrics_path style_metrics_YourName.json \
-    --use_peft \
-    --use_8bit \
-    --use_flash_attention
-```
+- **Slang and Abbreviations**
+  - Common internet slang (e.g., 'lol', 'omg', 'idk')
+  - Personal abbreviations
+  - Informal language patterns
 
-#### Llama3 Model Options
-- Llama3-8B: Excellent balance of performance and resource usage
-- Llama3-70B: State-of-the-art performance, requires significant resources
-- Both models support context lengths up to 8192 tokens
+### Writing Style Metrics
 
-#### Llama3-Specific Training Tips
-1. **Memory Optimization**:
-   - Use BF16 precision (default for Llama3)
-   - Enable Flash Attention 2 for better performance
-   - Use 8-bit quantization for larger models
+- **Capitalization**
+  - Sentence start patterns
+  - Stylistic caps usage
+  - Name/proper noun capitalization
 
-2. **Training Settings**:
-   - Optimized LoRA configuration (r=32)
-   - Target all attention modules and MLP layers
-   - Balanced learning rates for stability
+- **Punctuation**
+  - End-of-sentence patterns
+  - Multiple punctuation usage (!!!, ???)
+  - Informal punctuation style
 
-3. **Best Practices**:
-   - Always use BF16 precision
-   - Enable Flash Attention when possible
-   - Keep batch size moderate (2-4)
-   - Use gradient accumulation for stability
+- **Common Phrases**
+  - Frequent expressions
+  - Conversation starters/enders
+  - Personal catchphrases
 
-4. **Important Notes**:
-   - Requires Meta's model access approval
-   - Uses tiktoken-based tokenizer (different from Llama2)
-   - Needs proper padding token handling
+## Advanced Training Options
 
-### Qwen Model Support
+### Memory Optimization
 
-The tool now includes special support for Qwen models with optimizations:
+1. **8-bit Quantization**
+   ```bash
+   python finetune.py \
+       --data_path formatted_YourName.jsonl \
+       --use_8bit \
+       --batch_size 2
+   ```
 
-#### Qwen-Specific Features
-- BF16 precision training (better performance than FP16)
-- Flash Attention support
-- Optimized LoRA configuration
-- Special token handling
+2. **Gradient Accumulation**
+   ```bash
+   python finetune.py \
+       --gradient_accumulation_steps 8 \
+       --batch_size 1
+   ```
+
+### Model-Specific Features
+
+#### Llama3 Support
+- BF16 precision training
+- Flash Attention 2
+- 8192 token context
+- Example:
+  ```bash
+  python finetune.py \
+      --model_name "meta-llama/Llama-3-8b" \
+      --use_flash_attention \
+      --bf16
+  ```
+
+#### Qwen Support
 - Custom chat template
-
-#### Using Qwen Models
-
-1. Basic Usage:
-```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName" --llm_format qwen
-```
-
-2. Fine-tuning with Qwen:
-```bash
-python finetune.py \
-    --data_path formatted_YourName.jsonl \
-    --model_name "Qwen/Qwen-7B" \
-    --output_dir "./my_chatbot" \
-    --style_metrics_path style_metrics_YourName.json \
-    --use_peft \
-    --use_8bit \
-    --use_flash_attention
-```
-
-#### Qwen Model Options
-- Qwen-7B: Good balance of performance and resource usage
-- Qwen-14B: Better performance, requires more resources
-- Both models support context lengths up to 8192 tokens
-
-#### Qwen-Specific Training Tips
-1. **Memory Optimization**:
-   - Use BF16 precision (default for Qwen)
-   - Enable Flash Attention for better performance
-   - Use 8-bit quantization for larger models
-
-2. **Training Settings**:
-   - Higher LoRA rank (r=64) for better fine-tuning
-   - Custom attention module targeting
-   - Optimized learning rates
-
-3. **Best Practices**:
-   - Use Flash Attention when possible
-   - Keep batch size moderate (2-4)
-   - Use gradient accumulation for stability
-
-### Optimization Techniques
-
-1. Memory Optimization:
-   - 8-bit quantization
-   - LoRA fine-tuning
-   - Gradient accumulation
-
-2. Training Optimization:
-   - Learning rate adaptation
-   - Batch size adjustment
-   - Warmup steps
-   - Mixed precision training
-
-## Output Files
-
-The process generates several files:
-
-1. `output_YYYYMMDD_HHMMSS.csv`: Original conversation pairs
-2. `formatted_[YourName].jsonl`: Training data
-3. `style_metrics_[YourName].json`: Style analysis
-4. Fine-tuned model in `output_dir`:
-   - Model weights
-   - Tokenizer
-   - Style configuration
-   - Training logs
-
-## Best Practices
-
-1. **Data Quality**:
-   - Use at least 1000 messages for good results
-   - Include diverse conversations
-   - Clean out irrelevant messages
-
-2. **Model Selection**:
-   - Start with smaller models (7B)
-   - Use 8-bit quantization for larger models
-   - Enable LoRA for efficient training
-
-3. **Training Tips**:
-   - Monitor training with TensorBoard
-   - Start with default hyperparameters
-   - Adjust based on style metrics
-   - Use gradient accumulation for stability
-
-4. **Hardware Requirements**:
-   - 7B models: 16GB+ GPU VRAM
-   - 13B models: 24GB+ GPU VRAM
-   - 40B models: Multiple GPUs
+- Flash Attention
+- Example:
+  ```bash
+  python finetune.py \
+      --model_name "Qwen/Qwen-7B" \
+      --use_flash_attention
+  ```
 
 ## Troubleshooting
 
-1. **Memory Issues**:
-   - Enable 8-bit quantization
-   - Reduce batch size
-   - Increase gradient accumulation
-   - Use LoRA fine-tuning
+### Common Issues
 
-2. **Quality Issues**:
+1. **Memory Errors**
+   - Reduce batch size
+   - Enable 8-bit training
+   - Use gradient accumulation
+   ```bash
+   python finetune.py \
+       --batch_size 1 \
+       --use_8bit \
+       --gradient_accumulation_steps 8
+   ```
+
+2. **Training Issues**
+   - Adjust learning rate
    - Increase training data
-   - Adjust context length
-   - Try different base models
-   - Fine-tune hyperparameters
+   - Try different models
+   ```bash
+   python finetune.py \
+       --learning_rate 1e-5 \
+       --num_epochs 5
+   ```
+
+3. **Parsing Issues**
+   - Check date format
+   - Verify chat export
+   - Clean input data
+
+### Hardware Requirements
+
+1. **GPU Memory Requirements**
+   - 7B models: 16GB VRAM
+   - 13B models: 24GB VRAM
+   - 70B models: 80GB VRAM
+   - Multiple GPUs: Falcon 40B
+
+2. **Recommended Setup**
+   - NVIDIA GPU with CUDA support
+   - 32GB+ System RAM
+   - SSD for faster data loading
+
+## Best Practices
+
+### Data Preparation
+1. Use at least 1000 messages
+2. Include diverse conversations
+3. Clean irrelevant messages
+4. Maintain conversation context
+
+### Training Configuration
+1. Start with smaller models
+2. Use default hyperparameters
+3. Monitor with TensorBoard
+4. Save checkpoints regularly
+
+### Style Preservation
+1. Keep emoji patterns
+2. Maintain punctuation style
+3. Preserve message length patterns
+4. Retain personal phrases
+
+## Known Limitations
+
+1. **Data Format**
+   - WhatsApp format changes
+   - Regional date formats
+   - Media message handling
+
+2. **Resource Requirements**
+   - High VRAM usage
+   - Long training times
+   - System RAM needs
+
+3. **Model Access**
+   - Llama model approval
+   - Usage restrictions
+   - License requirements
+
+4. **Quality Factors**
+   - Short conversation impact
+   - Mixed language handling
+   - Group chat dynamics
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+Feel free to:
+- Submit issues
+- Propose features
+- Share improvements
+- Report bugs
 
-## Known Issues and Limitations
+## License
 
-1. **Data Format Sensitivity**:
-   - WhatsApp export format changes may break parsing
-   - Some regional date formats might not be recognized
-   - Media messages are skipped and may affect context
+This project is licensed under the MIT License. See LICENSE file for details.
 
-2. **Memory Requirements**:
-   - 7B models need at least 16GB VRAM
-   - Loading times can be long on slower systems
-   - System may freeze if RAM is insufficient
+## Acknowledgments
 
-3. **Training Limitations**:
-   - Short conversations may not provide enough context
-   - Mixed language chats may reduce quality
-   - Group chat dynamics can confuse the model
-   - Style analysis may be inaccurate with limited data
-
-4. **Model Access**:
-   - Llama models require Meta's approval
-   - Some models may have usage restrictions
-   - Commercial use may require special licenses
-
-5. **Performance Issues**:
-   - Flash Attention may not work on older GPUs
-   - 8-bit training can be unstable on some systems
-   - CPU training is extremely slow and not recommended
-
-6. **Common Error Cases**:
-   - "CUDA out of memory": Reduce batch size or use 8-bit
-   - "Token length exceeded": Adjust max_length parameter
-   - "Invalid date format": Check chat export format
-   - "Tokenizer errors": Update transformers library
-
-## Chat Format Requirements
-
-Your WhatsApp chat export should follow this format:
-
-```
-[MM/DD/YY, HH:MM:SS AM/PM] Author: Message text here
-```
-
-Example:
-```
-[01/13/24, 12:24:48 AM] Alex: Have you finished that project for work?
-[01/13/24, 12:52:48 AM] Jamie: I love those! Send me the title later.
-[01/13/24, 01:03:48 AM] Alex: Have you finished that project for work?
-```
-
-### Supported Date Formats
-
-The parser supports multiple date formats:
-1. Standard WhatsApp format: `[MM/DD/YY, HH:MM:SS AM/PM]`
-2. Without seconds: `[MM/DD/YY, HH:MM AM/PM]`
-3. International format: `[DD/MM/YY, HH:MM:SS AM/PM]`
-4. ISO-like format: `[YYYY-MM-DD, HH:MM:SS AM/PM]`
-
-### Format Guidelines
-
-1. **Message Structure**:
-   - Each message must be on a new line
-   - Date and time in brackets
-   - Author name followed by colon
-   - Message text after the colon
-
-2. **What to Include**:
-   - Regular text messages
-   - Emoji messages
-   - URLs (they will be cleaned automatically)
-   - Normal conversation text
-
-3. **What to Exclude**:
-   - Media messages (images, videos, documents)
-   - System messages
-   - Group settings changes
-   - Contact cards
-   - Location shares
-
-4. **Export Instructions**:
-   1. Open WhatsApp chat
-   2. Tap ⋮ (three dots) > More > Export chat
-   3. Choose 'Without media'
-   4. Save the .txt file
-   5. Use this file with the parser
-
-### Common Issues
-
-1. **Invalid Format**:
-   ```
-   # Wrong format:
-   13/01/24 12:24 - Alex: Message
-   
-   # Correct format:
-   [01/13/24, 12:24:48 AM] Alex: Message
-   ```
-
-2. **Missing Components**:
-   ```
-   # Missing brackets:
-   01/13/24, 12:24:48 AM Alex: Message
-   
-   # Missing colon:
-   [01/13/24, 12:24:48 AM] Alex Message
-   ```
-
-3. **System Messages**:
-   ```
-   # These will be automatically filtered:
-   [01/13/24, 12:24:48 AM] Messages and calls are end-to-end encrypted
-   [01/13/24, 12:24:48 AM] Alex changed the group description
-   ```
+- HuggingFace Transformers
+- Meta AI (Llama models)
+- WhatsApp chat format documentation
