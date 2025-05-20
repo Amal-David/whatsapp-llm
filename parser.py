@@ -191,7 +191,7 @@ class ChatParser:
                         timestamp=timestamp
                     )
                 except ValueError as e:
-                    logger.warning(f"Error parsing timestamp: {e}")
+                    logger.warning(f"Error parsing timestamp for date string '{date}' and time string '{time}': {e}. Line: {line}")
                     continue
         return None
 
@@ -330,6 +330,9 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
                         llm_format: LLMFormat = LLMFormat.LLAMA2) -> Tuple[pd.DataFrame, List[Dict], Dict]:
     """Enhanced converter function with style analysis."""
     chat_parser = ChatParser()
+
+    if not isinstance(filepath, str):
+        raise TypeError(f"Filepath must be a string, got {type(filepath)}")
     
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Chat file not found: {filepath}")
@@ -344,24 +347,32 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
     try:
         with open(filepath, 'r', encoding='utf-8') as fp:
             for line_num, line in enumerate(fp, 1):
-                chat_message = chat_parser.parse_line(line)
-                if chat_message:
-                    df_finetune.loc[len(df_finetune)] = {
-                        'Author': chat_message.author,
-                        'Message': chat_message.message,
-                        'Timestamp': chat_message.timestamp
-                    }
-                    
-                    if chat_message.author == prompter:
-                        result_dict[count]['prompt'] = chat_message.message
-                    elif chat_message.author == responder and count in result_dict:
-                        result_dict[count]['completion'] = chat_message.message
-                        count += 1
-                elif line.strip():  # Log only non-empty unmatched lines
-                    logger.warning(f"Line {line_num} did not match any pattern: {line.strip()}")
+                try:
+                    chat_message = chat_parser.parse_line(line)
+                    if chat_message:
+                        df_finetune.loc[len(df_finetune)] = {
+                            'Author': chat_message.author,
+                            'Message': chat_message.message,
+                            'Timestamp': chat_message.timestamp
+                        }
+                        
+                        if chat_message.author == prompter:
+                            result_dict[count]['prompt'] = chat_message.message
+                        elif chat_message.author == responder and count in result_dict:
+                            result_dict[count]['completion'] = chat_message.message
+                            count += 1
+                    elif line.strip():  # Log only non-empty unmatched lines
+                        logger.warning(f"Line {line_num} did not match any pattern: {line.strip()}")
+                except Exception as e:
+                    logger.error(f"Error processing line {line_num} in file {filepath}: {e}. Content: {line.strip()}")
+                    # Optionally, re-raise or continue based on desired behavior for line-level errors
+                    continue # Continue to the next line if one line fails
     
+    except IOError as e:
+        logger.error(f"IOError occurred while reading file {filepath}: {e}")
+        raise
     except Exception as e:
-        logger.error(f"Error processing file: {e}")
+        logger.error(f"Unexpected error during main processing loop of file {filepath}: {e}")
         raise
     
     if count == 0:
