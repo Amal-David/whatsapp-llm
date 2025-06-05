@@ -171,28 +171,28 @@ class ChatParser:
             match = re.search(pattern, line)
             if match:
                 date, time, author, message = match.groups()
-                try:
-                    # Try multiple date formats
-                    for date_format in ["%m/%d/%y", "%d/%m/%y", "%Y-%m-%d"]:
+                timestamp = None
+                # Try multiple date formats
+                for date_format in ["%m/%d/%y", "%d/%m/%y", "%Y-%m-%d"]:
+                    try:
+                        fmt = "%Y-%m-%d" if "-" in date else date_format
+                        timestamp = datetime.datetime.strptime(f"{date} {time}", f"{fmt} %I:%M:%S %p")
+                        break
+                    except ValueError:
                         try:
-                            if "-" in date:
-                                date_format = "%Y-%m-%d"
-                            timestamp = datetime.datetime.strptime(f"{date} {time}", f"{date_format} %I:%M:%S %p")
+                            timestamp = datetime.datetime.strptime(f"{date} {time}", f"{fmt} %I:%M %p")
                             break
                         except ValueError:
-                            try:
-                                timestamp = datetime.datetime.strptime(f"{date} {time}", f"{date_format} %I:%M %p")
-                                break
-                            except ValueError:
-                                continue
-                    return ChatMessage(
-                        author=author.strip(),
-                        message=message.strip(),
-                        timestamp=timestamp
-                    )
-                except ValueError as e:
-                    logger.warning(f"Error parsing timestamp: {e}")
+                            timestamp = None
+                            continue
+                if timestamp is None:
+                    logger.warning(f"Error parsing timestamp for line: {line}")
                     continue
+                return ChatMessage(
+                    author=author.strip(),
+                    message=message.strip(),
+                    timestamp=timestamp
+                )
         return None
 
 class ConversationManager:
@@ -327,7 +327,8 @@ def jsonl_data(df: pd.DataFrame, your_name: str, llm_format: LLMFormat = LLMForm
     return formatted_data, style_metrics
 
 def converter_with_debug(filepath: str, prompter: str, responder: str, your_name: str,
-                        llm_format: LLMFormat = LLMFormat.LLAMA2) -> Tuple[pd.DataFrame, List[Dict], Dict]:
+                        llm_format: LLMFormat = LLMFormat.LLAMA2,
+                        context_length: int = 3) -> Tuple[pd.DataFrame, List[Dict], Dict]:
     """Enhanced converter function with style analysis."""
     chat_parser = ChatParser()
     
@@ -373,7 +374,7 @@ def converter_with_debug(filepath: str, prompter: str, responder: str, your_name
     df = pd.DataFrame.from_dict(result_dict, orient='index')
     
     # Format data for fine-tuning with style analysis
-    formatted_data, style_metrics = jsonl_data(df_finetune, your_name, llm_format)
+    formatted_data, style_metrics = jsonl_data(df_finetune, your_name, llm_format, context_length)
     
     return df, formatted_data, style_metrics
 
@@ -397,7 +398,8 @@ if __name__ == "__main__":
             args.prompter,
             args.responder,
             args.your_name,
-            LLMFormat[args.llm_format.upper()]
+            LLMFormat[args.llm_format.upper()],
+            args.context_length
         )
         
         # Save the original parsed data
