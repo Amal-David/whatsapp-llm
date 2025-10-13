@@ -48,6 +48,17 @@ def load_and_process_data(
         except Exception as exc:
             raise ValueError(f"Failed to load persona summary: {exc}") from exc
 
+    def _normalize_text(text_item):
+        if isinstance(text_item, dict):
+            return json.dumps(text_item)
+        return str(text_item)
+
+    def normalize_examples(examples):
+        texts = examples['text']
+        if isinstance(texts, list):
+            return {'text': [_normalize_text(text) for text in texts]}
+        return {'text': _normalize_text(texts)}
+
     def prepend_persona_summary(examples):
         texts = examples['text']
         if not persona_summary:
@@ -55,9 +66,9 @@ def load_and_process_data(
 
         if isinstance(texts, list):
             return {
-                'text': [f"{persona_summary}\n\n{_normalize_text(text)}" for text in texts]
+                'text': [f"{persona_summary}\n\n{text}" for text in texts]
             }
-        return {'text': f"{persona_summary}\n\n{_normalize_text(texts)}"}
+        return {'text': f"{persona_summary}\n\n{texts}"}
 
     def tokenize_function(examples):
         """Tokenize the texts."""
@@ -71,10 +82,7 @@ def load_and_process_data(
             padding='max_length'
         )
 
-    def _normalize_text(text_item):
-        if isinstance(text_item, dict):
-            return json.dumps(text_item)
-        return str(text_item)
+    dataset = dataset.map(normalize_examples, batched=True)
 
     if persona_summary:
         dataset = dataset.map(prepend_persona_summary, batched=True)
