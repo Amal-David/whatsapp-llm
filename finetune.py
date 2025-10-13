@@ -13,6 +13,7 @@ import os
 import json
 from typing import Dict, List, Optional
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from persona import persona_summary_from_file
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,8 @@ logger = logging.getLogger(__name__)
 def load_and_process_data(
     data_path: str,
     tokenizer,
-    max_length: int = 2048
+    max_length: int = 2048,
+    persona_summary_path: Optional[str] = None
 ) -> Dict:
     """Load and process the JSONL dataset."""
     if not os.path.exists(data_path):
@@ -39,18 +41,44 @@ def load_and_process_data(
     if len(dataset['train']) == 0:
         raise ValueError("Dataset contains no training examples")
     
+    persona_summary = None
+    if persona_summary_path:
+        try:
+            persona_summary = persona_summary_from_file(persona_summary_path)
+        except Exception as exc:
+            raise ValueError(f"Failed to load persona summary: {exc}") from exc
+
+    def prepend_persona_summary(examples):
+        texts = examples['text']
+        if not persona_summary:
+            return {'text': texts}
+
+        if isinstance(texts, list):
+            return {
+                'text': [f"{persona_summary}\n\n{_normalize_text(text)}" for text in texts]
+            }
+        return {'text': f"{persona_summary}\n\n{_normalize_text(texts)}"}
+
     def tokenize_function(examples):
         """Tokenize the texts."""
         if not isinstance(examples['text'], (list, str)):
             raise ValueError("Invalid text format in dataset")
-            
+
         return tokenizer(
             examples['text'],
             truncation=True,
             max_length=max_length,
             padding='max_length'
         )
-    
+
+    def _normalize_text(text_item):
+        if isinstance(text_item, dict):
+            return json.dumps(text_item)
+        return str(text_item)
+
+    if persona_summary:
+        dataset = dataset.map(prepend_persona_summary, batched=True)
+
     # Tokenize the dataset
     try:
         tokenized_dataset = dataset.map(
@@ -271,6 +299,8 @@ def main():
                         help='Name or path of the tokenizer (if different from model)')
     parser.add_argument('--style_metrics_path', type=str, default=None,
                         help='Path to the style metrics JSON file')
+    parser.add_argument('--persona_summary_path', type=str, default=None,
+                        help='Path to a persona YAML/JSON file to prepend to each training example')
     parser.add_argument('--use_8bit', action='store_true',
                         help='Use 8-bit quantization for training')
     parser.add_argument('--use_peft', action='store_true',
@@ -328,7 +358,8 @@ def main():
         tokenized_dataset = load_and_process_data(
             args.data_path,
             tokenizer,
-            args.max_length
+            args.max_length,
+            persona_summary_path=args.persona_summary_path
         )
         
         # Adjust training arguments

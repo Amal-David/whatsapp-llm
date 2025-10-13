@@ -26,11 +26,17 @@ A Python toolkit for creating a personalized AI clone of yourself using WhatsApp
   - 8-bit quantization support
   - Gradient accumulation
   - Mixed precision training
+- **Persona Export Enhancements**:
+  - Contact-scoped dataset filtering with episode segmentation
+  - Automated tone, topic, and intent tagging for every training sample
+  - Persona file generator with memory slots, quirks, and prompt snippets
+  - Optional PII redaction utilities for safer sharing
 
 ## Requirements
 
 ```bash
-pip install pandas transformers torch datasets tensorboard peft
+pip install -r requirements.txt
+pip install transformers torch datasets tensorboard peft
 ```
 
 ## Getting Started
@@ -87,13 +93,20 @@ Advanced usage:
 ```bash
 python parser.py chat.txt "YourName" "OtherPerson" "YourName" \
     --llm_format mistral \
-    --context_length 5
+    --context_length 5 \
+    --contact "Jamie" \
+    --include_self \
+    --episode_gap_hours 4 \
+    --persona_metadata persona_metadata.json
 ```
 
 This generates:
 - `output_YYYYMMDD_HHMMSS.csv`: Original conversation pairs
-- `formatted_YourName.jsonl`: Training data
+- `formatted_YourName.jsonl`: Training data with persona tags per sample
 - `style_metrics_YourName.json`: Style analysis
+- `persona_metadata.json`: Episode boundaries and tone/topic/intent annotations (when `--persona_metadata` is provided)
+
+> **Tip:** Use `--contact` to automatically isolate a single person from a multi-party export. The parser warns if any other authors or media placeholders slip through the filter so you can clean them up quickly.
 
 ### 2. Fine-tuning Process
 
@@ -105,6 +118,7 @@ python finetune.py \
     --model_name "mistralai/Mistral-7B-v0.1" \
     --output_dir "./my_chatbot" \
     --style_metrics_path style_metrics_YourName.json \
+    --persona_summary_path persona_YourContact.yaml \
     --use_peft \
     --use_8bit
 ```
@@ -190,6 +204,7 @@ The tool performs a comprehensive analysis of your chat style through multiple l
   ```bash
   python finetune.py \
       --model_name "meta-llama/Llama-3-8b" \
+      --persona_summary_path persona_YourContact.yaml \
       --use_flash_attention \
       --bf16
   ```
@@ -201,8 +216,45 @@ The tool performs a comprehensive analysis of your chat style through multiple l
   ```bash
   python finetune.py \
       --model_name "Qwen/Qwen-7B" \
+      --persona_summary_path persona_YourContact.yaml \
       --use_flash_attention
   ```
+
+### 3. Persona Workflow (Optional)
+
+Use the orchestration CLI to automate parse → persona → fine-tune preparation:
+
+```bash
+python main.py persona \
+    --chat chat.txt \
+    --contact "Jamie" \
+    --your-name "Alex" \
+    --prompter "Jamie" \
+    --responder "Alex" \
+    --include-self \
+    --output-dir artifacts/jamie \
+    --redact
+```
+
+Outputs include:
+- Filtered conversation pairs and formatted JSONL with persona tags
+- Episode metadata (`persona_metadata.json`) plus a persona profile (`persona_jamie.yaml`)
+- Optional PII-redacted persona summaries when `--redact` is supplied
+- Optional automated fine-tuning when you extend the command with `--run-finetune --model-name <model> --output-model-dir <dir>`
+
+Check `persona_template.yaml` to see the schema and adapt it for prompt engineering.
+
+## Persona Evaluation
+
+After fine-tuning, you can verify persona adherence with the evaluation helper:
+
+```bash
+python evaluate_persona.py \
+    --persona persona_jamie.yaml \
+    --dataset artifacts/jamie/formatted_dataset.jsonl
+```
+
+The script reports persona summary injection, tone alignment, and factual coverage percentages so you can spot drift early.
 
 ## Troubleshooting
 
