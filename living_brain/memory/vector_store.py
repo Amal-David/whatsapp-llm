@@ -8,7 +8,6 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 try:
     import chromadb
@@ -33,7 +32,7 @@ class MemoryEntry:
     content: str
     timestamp: datetime
     metadata: dict = field(default_factory=dict)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -121,8 +120,8 @@ class VectorStore:
     def add(
         self,
         content: str,
-        timestamp: Optional[datetime] = None,
-        metadata: Optional[dict] = None,
+        timestamp: datetime | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         Add a memory entry to the store.
@@ -183,6 +182,7 @@ class VectorStore:
             return []
 
         ids = []
+        new_ids = []
         contents = []
         metadatas = []
         timestamps = []
@@ -197,6 +197,7 @@ class VectorStore:
                 continue
 
             ids.append(entry_id)
+            new_ids.append(entry_id)
             contents.append(content)
             timestamps.append(timestamp)
             metadatas.append({
@@ -209,7 +210,7 @@ class VectorStore:
             embeddings = self.embed(contents)
 
             self._collection.add(
-                ids=ids[:len(contents)],  # Only new IDs
+                ids=new_ids,
                 embeddings=embeddings,
                 documents=contents,
                 metadatas=metadatas,
@@ -224,7 +225,7 @@ class VectorStore:
         query: str,
         top_k: int = 5,
         min_score: float = 0.0,
-        filter_metadata: Optional[dict] = None,
+        filter_metadata: dict | None = None,
     ) -> list[tuple[MemoryEntry, float]]:
         """
         Search for relevant memories.
@@ -340,7 +341,7 @@ class VectorStore:
 
     def import_from_file(self, filepath: str | Path) -> int:
         """Import memories from a JSON file."""
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             entries = json.load(f)
 
         count = 0

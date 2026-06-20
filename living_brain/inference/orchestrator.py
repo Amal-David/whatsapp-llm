@@ -6,14 +6,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from ..core.config import Config, InferenceConfig
+from ..core.config import Config
+from ..ingest.style_analyzer import StyleMetrics
+from ..memory.fact_store import FactStore
 from ..memory.retriever import MemoryRetriever, RetrievalResult
 from ..memory.vector_store import VectorStore
-from ..memory.fact_store import FactStore
 from ..style.adapter_manager import AdapterManager
-from ..ingest.style_analyzer import StyleMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 class GenerationResult:
     """Result of a generation."""
     response: str
-    retrieval: Optional[RetrievalResult] = None
+    retrieval: RetrievalResult | None = None
     tokens_generated: int = 0
     generation_time_ms: float = 0.0
 
@@ -37,10 +36,10 @@ class Orchestrator:
 
     def __init__(
         self,
-        config: Optional[Config] = None,
-        adapter_name: Optional[str] = None,
+        config: Config | None = None,
+        adapter_name: str | None = None,
         use_gguf: bool = False,
-        gguf_path: Optional[str] = None,
+        gguf_path: str | None = None,
     ):
         """
         Initialize the orchestrator.
@@ -56,20 +55,11 @@ class Orchestrator:
         self.use_gguf = use_gguf
         self.gguf_path = gguf_path
 
-        # Initialize memory system
-        self.vector_store = VectorStore(
-            persist_directory=self.config.memory.chroma_persist_dir,
-            collection_name=self.config.memory.collection_name,
-            embedding_model=self.config.model.embedding_model,
-        )
-        self.fact_store = FactStore(
-            facts_path=self.config.facts.facts_path,
-        )
-        self.retriever = MemoryRetriever(
-            vector_store=self.vector_store,
-            fact_store=self.fact_store,
-            top_k_memories=self.config.memory.top_k_retrieval,
-        )
+        # Memory is initialized lazily so GGUF or prompt-only flows can run
+        # without the optional ChromaDB dependency.
+        self.vector_store: VectorStore | None = None
+        self.fact_store: FactStore | None = None
+        self.retriever: MemoryRetriever | None = None
 
         # Initialize adapter manager
         self.adapter_manager = AdapterManager(
@@ -77,7 +67,7 @@ class Orchestrator:
         )
 
         # Style metrics (loaded from adapter if available)
-        self.style_metrics: Optional[StyleMetrics] = None
+        self.style_metrics: StyleMetrics | None = None
 
         # Model (lazy loaded)
         self._model = None
@@ -86,6 +76,24 @@ class Orchestrator:
 
         # Conversation history
         self._history: list[dict] = []
+
+    def _get_retriever(self) -> MemoryRetriever:
+        """Lazy load memory stores only when memory or facts are requested."""
+        if self.retriever is None:
+            self.vector_store = VectorStore(
+                persist_directory=self.config.memory.chroma_persist_dir,
+                collection_name=self.config.memory.collection_name,
+                embedding_model=self.config.model.embedding_model,
+            )
+            self.fact_store = FactStore(
+                facts_path=self.config.facts.facts_path,
+            )
+            self.retriever = MemoryRetriever(
+                vector_store=self.vector_store,
+                fact_store=self.fact_store,
+                top_k_memories=self.config.memory.top_k_retrieval,
+            )
+        return self.retriever
 
     def _load_style_metrics(self) -> None:
         """Load style metrics from the adapter."""
@@ -153,11 +161,11 @@ class Orchestrator:
         """Load a transformers model with optional LoRA adapter."""
         try:
             from unsloth import FastLanguageModel
-            USE_UNSLOTH = True
+            use_unsloth = True
         except ImportError:
-            USE_UNSLOTH = False
+            use_unsloth = False
 
-        if USE_UNSLOTH:
+        if use_unsloth:
             logger.info(f"Loading model with Unsloth: {self.config.model.base_model}")
             self._model, self._tokenizer = FastLanguageModel.from_pretrained(
                 model_name=self.config.model.base_model,
@@ -169,8 +177,8 @@ class Orchestrator:
             # Enable inference mode
             FastLanguageModel.for_inference(self._model)
         else:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             logger.info(f"Loading model: {self.config.model.base_model}")
             self._tokenizer = AutoTokenizer.from_pretrained(self.config.model.base_model)
@@ -193,7 +201,7 @@ class Orchestrator:
     def _format_prompt(
         self,
         message: str,
-        retrieval: Optional[RetrievalResult] = None,
+        retrieval: RetrievalResult | None = None,
     ) -> str:
         """Format the prompt with context and history."""
         system = self._get_system_prompt()
@@ -252,8 +260,8 @@ class Orchestrator:
         message: str,
         use_memory: bool = True,
         use_facts: bool = True,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> GenerationResult:
         """
         Generate a response to a message.
@@ -275,7 +283,7 @@ class Orchestrator:
         # Retrieve context
         retrieval = None
         if use_memory or use_facts:
-            retrieval = self.retriever.retrieve(
+            retrieval = self._get_retriever().retrieve(
                 query=message,
                 include_facts=use_facts,
                 include_memories=use_memory,
@@ -381,10 +389,10 @@ class Orchestrator:
     def add_to_memory(
         self,
         conversation: str,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> tuple[str, list]:
         """Add the current conversation to memory."""
-        return self.retriever.add_conversation_to_memory(
+        return self._get_retriever().add_conversation_to_memory(
             conversation_text=conversation,
             timestamp=timestamp,
             extract_facts=self.config.facts.auto_extract,
@@ -392,10 +400,12 @@ class Orchestrator:
 
     def get_stats(self) -> dict:
         """Get statistics about the system."""
-        return {
+        base = {
             "model": self.config.model.base_model,
             "adapter": self.adapter_name,
             "use_gguf": self.use_gguf,
             "history_length": len(self._history),
-            **self.retriever.stats(),
         }
+        if self.retriever is None:
+            return {**base, "memory_loaded": False}
+        return {**base, "memory_loaded": True, **self.retriever.stats()}

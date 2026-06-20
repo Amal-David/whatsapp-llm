@@ -8,7 +8,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class Fact:
     confidence: float = 1.0  # 0-1 confidence score
     source: str = "extracted"  # How this fact was created
     timestamp: datetime = field(default_factory=datetime.now)
-    superseded_by: Optional[str] = None  # ID of newer fact that replaces this
+    superseded_by: str | None = None  # ID of newer fact that replaces this
 
     @property
     def id(self) -> str:
@@ -67,14 +66,6 @@ class FactStore:
 
     # Regex patterns for extracting facts from text
     EXTRACTION_PATTERNS = [
-        # I am/I'm patterns
-        (r"(?:i am|i'm|im)\s+(?:a\s+)?(.+?)(?:\.|$)", "I", "am"),
-        # I live/work patterns
-        (r"i\s+(?:live|work|stay)\s+(?:in|at)\s+(.+?)(?:\.|$)", "I", "live in"),
-        # My X is Y patterns
-        (r"my\s+(\w+)\s+(?:is|was)\s+(?:called\s+|named\s+)?(.+?)(?:\.|$)", "my {0}", "is"),
-        # I have patterns
-        (r"i\s+have\s+(?:a\s+)?(.+?)(?:\.|$)", "I", "have"),
         # Name patterns
         (r"(?:my name is|i'm called|call me)\s+(.+?)(?:\.|$)", "I", "am named"),
         # Age patterns
@@ -83,8 +74,16 @@ class FactStore:
         (r"i(?:'m|\s+am)\s+(?:from|in)\s+(.+?)(?:\.|$)", "I", "am from"),
         # Job patterns
         (r"i\s+work\s+(?:as\s+)?(?:a\s+)?(.+?)(?:\.|$)", "I", "work as"),
+        # I live/work patterns
+        (r"i\s+(?:live|work|stay)\s+(?:in|at)\s+(.+?)(?:\.|$)", "I", "live in"),
+        # My X is Y patterns
+        (r"my\s+(\w+)\s+(?:is|was)\s+(?:called\s+|named\s+)?(.+?)(?:\.|$)", "my {0}", "is"),
+        # I have patterns
+        (r"i\s+have\s+(?:a\s+)?(.+?)(?:\.|$)", "I", "have"),
         # Hobby patterns
         (r"i\s+(?:love|like|enjoy)\s+(.+?)(?:\.|$)", "I", "enjoy"),
+        # I am/I'm patterns. Keep this generic pattern after specific predicates.
+        (r"(?:i am|i'm|im)\s+(?:a\s+)?(.+?)(?:\.|$)", "I", "am"),
     ]
 
     def __init__(self, facts_path: str = "./data/facts.json"):
@@ -104,7 +103,7 @@ class FactStore:
         """Load facts from disk."""
         if self.facts_path.exists():
             try:
-                with open(self.facts_path, 'r') as f:
+                with open(self.facts_path) as f:
                     data = json.load(f)
                 for fact_data in data:
                     fact = Fact.from_dict(fact_data)
@@ -155,7 +154,7 @@ class FactStore:
         # Check for existing fact with same subject+predicate
         existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(" ", "_")
         for key, existing in list(self._facts.items()):
-            if key.startswith(existing_key) and key != fact.id:
+            if key.startswith(existing_key + ":") and key != fact.id:
                 # Mark old fact as superseded
                 existing.superseded_by = fact.id
                 logger.info(f"Fact superseded: {existing.to_natural()} -> {fact.to_natural()}")
@@ -172,14 +171,14 @@ class FactStore:
             results.append(fact)
         return results
 
-    def get(self, fact_id: str) -> Optional[Fact]:
+    def get(self, fact_id: str) -> Fact | None:
         """Get a fact by ID."""
         return self._facts.get(fact_id)
 
     def query(
         self,
-        subject: Optional[str] = None,
-        predicate: Optional[str] = None,
+        subject: str | None = None,
+        predicate: str | None = None,
         include_superseded: bool = False,
     ) -> list[Fact]:
         """
@@ -241,11 +240,16 @@ class FactStore:
             List of extracted facts (not yet added to store)
         """
         facts = []
+        seen_ids = set()
+        occupied_spans: list[tuple[int, int]] = []
         text_lower = text.lower()
 
         for pattern, subject_template, predicate in self.EXTRACTION_PATTERNS:
             matches = re.finditer(pattern, text_lower, re.IGNORECASE)
             for match in matches:
+                if any(match.start() < end and start < match.end() for start, end in occupied_spans):
+                    continue
+
                 groups = match.groups()
 
                 if len(groups) == 1:
@@ -266,7 +270,11 @@ class FactStore:
                         confidence=0.7,  # Lower confidence for extracted facts
                         source="extracted",
                     )
+                    if fact.id in seen_ids:
+                        continue
                     facts.append(fact)
+                    seen_ids.add(fact.id)
+                    occupied_spans.append(match.span())
 
         return facts
 
@@ -341,7 +349,7 @@ class FactStore:
 
     def import_from_file(self, filepath: str | Path) -> int:
         """Import facts from a JSON file."""
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
 
         count = 0
