@@ -54,10 +54,14 @@ class PersonaBuilder:
             overview.append({'topic': topic, 'frequency': count})
         return overview
 
+    def _author_mask(self, df: pd.DataFrame, author: str) -> pd.Series:
+        if 'Author' not in df.columns:
+            return pd.Series(False, index=df.index)
+        return df['Author'].astype(str).str.casefold() == author.casefold()
+
     def _conversation_role(self, df: pd.DataFrame) -> str:
-        counts = df['Author'].value_counts()
-        contact_msgs = counts.get(self.contact_name, 0)
-        your_msgs = counts.get(self.your_name, 0)
+        contact_msgs = int(self._author_mask(df, self.contact_name).sum())
+        your_msgs = int(self._author_mask(df, self.your_name).sum())
         if contact_msgs > your_msgs * 1.2:
             return 'primary_initiator'
         if your_msgs > contact_msgs * 1.2:
@@ -93,7 +97,7 @@ class PersonaBuilder:
 
     def _memory_slots(self, df: pd.DataFrame) -> List[Dict[str, object]]:
         facts = {}
-        contact_rows = df[df['Author'] == self.contact_name]
+        contact_rows = df[self._author_mask(df, self.contact_name)]
         patterns = [
             (r"\bI am ([^.?!]+)", 'identity'),
             (r"\bI'm ([^.?!]+)", 'identity'),
@@ -122,12 +126,7 @@ class PersonaBuilder:
                         'confidence': 0.9
                     }
 
-        slots = list(facts.values())
-        if self.redact:
-            for slot in slots:
-                slot['value'] = self.redactor.redact_text(slot['value'])
-                slot['source_message'] = self.redactor.redact_text(slot['source_message'])
-        return slots
+        return list(facts.values())
 
     def _prompt_snippets(self, tone_descriptors: List[str], topics: List[Dict[str, object]]) -> List[str]:
         topic_examples = ', '.join(topic['topic'] for topic in topics[:3]) if topics else 'their favourite subjects'
@@ -169,20 +168,24 @@ class PersonaBuilder:
         df = pd.DataFrame(chat_records)
         if df.empty:
             df = pd.DataFrame(columns=['Author', 'Message', 'Timestamp', 'Tone', 'Intent', 'Topic', 'Episode'])
+        for column in ['Author', 'Message', 'Timestamp', 'Tone', 'Intent', 'Topic', 'Episode']:
+            if column not in df.columns:
+                df[column] = None
 
-        tone_descriptors = self._tone_descriptors(df.get('Tone', []))
-        intent_distribution = self._intent_distribution(df.get('Intent', []))
-        topic_overview = self._topic_overview(df.get('Topic', []))
+        subject_df = df[self._author_mask(df, self.contact_name)]
+        tone_descriptors = self._tone_descriptors(subject_df.get('Tone', []))
+        intent_distribution = self._intent_distribution(subject_df.get('Intent', []))
+        topic_overview = self._topic_overview(subject_df.get('Topic', []))
         conversation_role = self._conversation_role(df)
-        memory_slots = self._memory_slots(df)
+        memory_slots = self._memory_slots(subject_df)
         prompt_snippets = self._prompt_snippets(tone_descriptors, topic_overview)
         summary = self._compose_summary(tone_descriptors, topic_overview, intent_distribution)
 
         persona_payload = {
-            'contact_name': self.redactor.redact_text(self.contact_name) if self.redact else self.contact_name,
+            'contact_name': self.contact_name,
             'conversation_role': conversation_role,
             'tone_descriptors': tone_descriptors,
-            'sentiment_distribution': dict(Counter(tone for tone in df.get('Tone', []) if tone)),
+            'sentiment_distribution': dict(Counter(tone for tone in subject_df.get('Tone', []) if tone)),
             'intent_distribution': intent_distribution,
             'dominant_topics': topic_overview,
             'notable_quirks': self._notable_quirks(style_metrics),
@@ -194,7 +197,7 @@ class PersonaBuilder:
         }
 
         if self.redact:
-            persona_payload['prompt_snippets'] = [self.redactor.redact_text(snippet) for snippet in prompt_snippets]
+            persona_payload = self.redactor.redact_value(persona_payload)
 
         return PersonaProfile(persona=persona_payload)
 
@@ -218,5 +221,9 @@ def load_persona_profile(path: str) -> PersonaProfile:
 
 
 def persona_summary_from_file(path: str) -> str:
+    if path.endswith(('.txt', '.md')):
+        with open(path, 'r') as f:
+            return f.read().strip()
+
     profile = load_persona_profile(path)
     return profile.summary()

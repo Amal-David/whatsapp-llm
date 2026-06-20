@@ -4,20 +4,12 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from finetune import (
-    DataCollatorForLanguageModeling,
-    TrainingArguments,
-    load_and_process_data,
-    setup_model_and_tokenizer,
-    setup_peft_config,
-    train
-)
-from peft import get_peft_model
 from parser import (
     LLMFormat,
     converter_with_debug
 )
 from persona import PersonaBuilder, save_persona_profile
+from privacy import PIIRedactor
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +19,13 @@ def write_jsonl(records, path: Path) -> None:
     with path.open('w') as f:
         for item in records:
             f.write(json.dumps(item) + '\n')
+
+
+def style_metrics_for_author(author_style_metrics, author_name: str, fallback):
+    for candidate, metrics in author_style_metrics.items():
+        if str(candidate).casefold() == author_name.casefold():
+            return metrics
+    return fallback
 
 
 def run_finetune_pipeline(
@@ -45,6 +44,16 @@ def run_finetune_pipeline(
     use_peft: bool,
     use_flash_attention: bool
 ) -> None:
+    from finetune import (
+        DataCollatorForLanguageModeling,
+        TrainingArguments,
+        load_and_process_data,
+        setup_model_and_tokenizer,
+        setup_peft_config,
+        train
+    )
+    from peft import get_peft_model
+
     persona_summary = None
     if persona_summary_path and persona_summary_path.exists():
         persona_summary = str(persona_summary_path)
@@ -108,6 +117,7 @@ def run_finetune_pipeline(
 def run_persona_command(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir or f"persona_artifacts_{args.contact.lower().replace(' ', '_')}")
     output_dir.mkdir(parents=True, exist_ok=True)
+    redactor = PIIRedactor() if args.redact else None
 
     llm_format = LLMFormat[args.llm_format.upper()]
     parsed_pairs, formatted_records, style_metrics, persona_context = converter_with_debug(
@@ -131,23 +141,31 @@ def run_persona_command(args: argparse.Namespace) -> None:
     logger.info("Saved formatted dataset to %s", formatted_path)
 
     style_metrics_path = output_dir / f'style_metrics_{args.your_name}.json'
+    style_metrics_output = redactor.redact_value(style_metrics) if redactor else style_metrics
     with style_metrics_path.open('w') as f:
-        json.dump(style_metrics, f, indent=2)
+        json.dump(style_metrics_output, f, indent=2)
     logger.info("Saved style metrics to %s", style_metrics_path)
 
     persona_metadata_path = output_dir / 'persona_metadata.json'
+    persona_metadata_output = redactor.redact_value(persona_context) if redactor else persona_context
     with persona_metadata_path.open('w') as f:
-        json.dump(persona_context, f, indent=2, default=str)
+        json.dump(persona_metadata_output, f, indent=2, default=str)
     logger.info("Saved persona metadata to %s", persona_metadata_path)
 
     builder = PersonaBuilder(
         your_name=args.your_name,
         contact_name=args.contact,
+        redactor=redactor,
         redact=args.redact
+    )
+    persona_style_metrics = style_metrics_for_author(
+        persona_context.get('author_style_metrics', {}),
+        args.contact,
+        style_metrics
     )
     persona_profile = builder.build_profile(
         persona_context.get('tagged_messages', []),
-        style_metrics,
+        persona_style_metrics,
         persona_context.get('episode_metadata')
     )
 

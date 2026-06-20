@@ -501,9 +501,16 @@ def jsonl_data(
     target_contact = contact_name or your_name
     tagged_df = persona_tagger.tag_dataframe(df_with_episodes, target_contact, your_name)
 
-    # Extract personal style
+    style_extractor = PersonalStyleExtractor()
+    author_style_metrics: Dict[str, Dict] = {}
+    if not tagged_df.empty and 'Author' in tagged_df.columns:
+        for author in tagged_df['Author'].dropna().unique():
+            author_messages = tagged_df[tagged_df['Author'] == author]['Message'].tolist()
+            author_style_metrics[str(author)] = style_extractor.analyze_style(author_messages)
+
+    # Extract personal style for training examples that model your responses.
     your_messages = tagged_df[tagged_df['Author'] == your_name]['Message'].tolist()
-    style_metrics = PersonalStyleExtractor().analyze_style(your_messages)
+    style_metrics = style_extractor.analyze_style(your_messages)
     system_prompt = create_system_prompt(style_metrics)
 
     formatter = LLMFormatter()
@@ -556,7 +563,8 @@ def jsonl_data(
 
     persona_context = {
         "episode_metadata": detector.metadata if not df.empty else [],
-        "tagged_messages": tagged_df.to_dict('records')
+        "tagged_messages": tagged_df.to_dict('records'),
+        "author_style_metrics": author_style_metrics
     }
 
     return formatted_data, style_metrics, persona_context
