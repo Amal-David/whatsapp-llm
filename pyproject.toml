@@ -15,7 +15,7 @@ authors = [
 keywords = [
     "ai", "llm", "fine-tuning", "personal-assistant", "whatsapp",
     "lora", "rag", "memory", "chatbot", "persona", "dpo",
-    "qlora", "character-card", "elizaos"
+    "qlora", "character-card"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

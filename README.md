@@ -34,7 +34,7 @@ not designed for deceptive impersonation or detector evasion.
 | Sample text | Method ranking, what works, gaps, style card JSON, prompt snippet, export JSON |
 | Authenticity cues | Laughter, ellipsis, emoji, repeated punctuation, elongation, lowercase starts, all-caps, particles |
 | Code-switching | Script mix, romanized markers, switch rate, generation rules |
-| Character files | Canonical character JSON, ElizaOS character JSON, Character Card v2, persona Markdown |
+| Character files | Canonical character JSON, Character Card v2, persona Markdown |
 | Memory | ChromaDB vector store, fact extraction, recency retrieval, memory consolidation |
 | Inference | Lazy orchestrator, transformers or llama.cpp GGUF, Gradio chat |
 | Safety | Consent checks, PII redaction, third-party context controls, no raw shared quotes by default |
@@ -108,7 +108,6 @@ It produces:
 - `eval.jsonl`
 - `style_capsule.json`
 - `canonical_character.json`
-- `elizaos.character.json`
 - `character_card_v2.json`
 - `persona.md`
 - `recommendation.md`

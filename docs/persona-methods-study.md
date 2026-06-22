@@ -79,7 +79,7 @@ For this repo, the existing `DataFormatter` already supports Alpaca, ChatML, and
 - TRL-style DPO JSONL
 - OpenAI-style DPO JSONL
 - eval JSONL
-- ElizaOS, Character Card v2, and Markdown persona files
+- Character Card v2 and Markdown persona files
 
 ## Dataset Contracts
 
@@ -221,11 +221,10 @@ guards.
 Use an internal WhatsApp Participant Character v1 spec as canonical truth, then export pure transforms:
 
 1. `canonical_character.json`
-2. `elizaos.character.json`
-3. `character_card_v2.json`
-4. `persona.md`
+2. `character_card_v2.json`
+3. `persona.md`
 
-ElizaOS character files are runtime agent configs with fields such as `name`, `bio`, `system`, `adjectives`, `topics`, `knowledge`, `messageExamples`, and `style`. Character Card v2 is a portable prompt-card schema with `spec`, `spec_version`, and a nested `data` payload. The canonical format should keep provenance, confidence, privacy policy, and derived style metrics that those external formats do not own cleanly.
+Character Card v2 is a portable prompt-card schema with `spec`, `spec_version`, and a nested `data` payload. The canonical format should keep provenance, confidence, privacy policy, and derived style metrics that external prompt-card formats do not own cleanly.
 
 ## Safety And Product Constraints
 
@@ -251,6 +250,5 @@ It should not optimize for "undetectable AI" or "make people believe this person
 - TRL DPO trainer: https://huggingface.co/docs/trl/en/dpo_trainer
 - OpenAI supervised fine-tuning: https://developers.openai.com/api/docs/guides/supervised-fine-tuning
 - OpenAI direct preference optimization: https://developers.openai.com/api/docs/guides/direct-preference-optimization
-- ElizaOS Character Interface: https://docs.elizaos.ai/agents/character-interface
 - Character Card v2: https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md
 - Lissin naturalness report: https://lissin-naturalness-report.pages.dev/

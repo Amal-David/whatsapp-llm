@@ -85,7 +85,6 @@ class PersonaBuildResult:
     eval_rows: list[dict[str, Any]]
     style_capsule: dict[str, Any]
     canonical_character: dict[str, Any]
-    elizaos_character: dict[str, Any]
     character_card_v2: dict[str, Any]
     persona_markdown: str
     recommendation_markdown: str
@@ -174,7 +173,6 @@ class PersonaDatasetBuilder:
             canonical_examples=canonical_examples,
             owner_type=owner_type,
         )
-        elizaos_character = self._elizaos_character(canonical_character)
         character_card_v2 = self._character_card_v2(canonical_character)
         persona_markdown = self._persona_markdown(canonical_character)
         recommendation_markdown = self._recommendation_markdown(recommendation)
@@ -210,7 +208,6 @@ class PersonaDatasetBuilder:
             eval_rows=eval_rows,
             style_capsule=style_capsule,
             canonical_character=canonical_character,
-            elizaos_character=elizaos_character,
             character_card_v2=character_card_v2,
             persona_markdown=persona_markdown,
             recommendation_markdown=recommendation_markdown,
@@ -234,12 +231,6 @@ class PersonaDatasetBuilder:
             + "\n",
             "canonical_character.json": json.dumps(
                 result.canonical_character,
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-            "elizaos.character.json": json.dumps(
-                result.elizaos_character,
                 ensure_ascii=False,
                 indent=2,
             )
@@ -620,48 +611,6 @@ class PersonaDatasetBuilder:
                 "style_capsule_id": f"{persona_id}_global_v1",
                 "recommended_method": self._recommendation(participant, style_metrics.message_count),
             },
-        }
-
-    def _elizaos_character(self, canonical: dict[str, Any]) -> dict[str, Any]:
-        name = canonical["participant"]["display_name"]
-        examples = []
-        for dialogue in canonical["examples"]["dialogue"]:
-            examples.append(
-                [
-                    {
-                        "name": "{{user}}" if msg["speaker"] != name else name,
-                        "content": {"text": msg["text"]},
-                    }
-                    for msg in dialogue["messages"]
-                ]
-            )
-
-        return {
-            "name": name,
-            "bio": [canonical["profile"]["summary"]],
-            "system": canonical["prompting"]["system"],
-            "adjectives": canonical["profile"]["traits"],
-            "topics": canonical["profile"]["topics"],
-            "knowledge": canonical["knowledge"]["stable_facts"],
-            "messageExamples": examples,
-            "postExamples": [],
-            "style": {
-                "all": canonical["communication_style"]["tone"],
-                "chat": [
-                    canonical["communication_style"]["verbosity"],
-                    canonical["communication_style"]["emoji_use"],
-                    canonical["communication_style"]["punctuation"],
-                ],
-                "post": [],
-            },
-            "settings": {
-                "whatsapp_llm": {
-                    "schema_version": canonical["schema_version"],
-                    "source": canonical["provenance"]["source"],
-                    "privacy": canonical["provenance"]["privacy"],
-                }
-            },
-            "plugins": [],
         }
 
     def _character_card_v2(self, canonical: dict[str, Any]) -> dict[str, Any]:
