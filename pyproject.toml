@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "living-brain"
 version = "0.1.0"
-description = "A continuous personal AI clone that learns and evolves with new conversations"
+description = "Local WhatsApp persona dataset, character-file, fine-tuning, and memory workbench"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -14,7 +14,8 @@ authors = [
 ]
 keywords = [
     "ai", "llm", "fine-tuning", "personal-assistant", "whatsapp",
-    "lora", "rag", "memory", "chatbot"
+    "lora", "rag", "memory", "chatbot", "persona", "dpo",
+    "qlora", "character-card", "elizaos"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -104,9 +105,9 @@ all = [
 living-brain = "living_brain.main:main"
 
 [project.urls]
-Homepage = "https://github.com/your-username/living-brain"
-Documentation = "https://github.com/your-username/living-brain#readme"
-Repository = "https://github.com/your-username/living-brain"
+Homepage = "https://github.com/Amal-David/whatsapp-llm"
+Documentation = "https://github.com/Amal-David/whatsapp-llm#readme"
+Repository = "https://github.com/Amal-David/whatsapp-llm"
 
 [tool.setuptools.packages.find]
 include = ["living_brain*"]
