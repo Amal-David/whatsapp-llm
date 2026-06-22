@@ -1,308 +1,246 @@
-# Personal Clone with WhatsApp Messages
+# Living Brain: Continuous Personal AI Clone
 
-A Python toolkit for creating a personalized AI clone of yourself using WhatsApp chat data. This tool analyzes your chat patterns, writing style, and personality traits to create a fine-tuned language model that can interact just like you.
+A modular system for creating a **living AI clone** that learns and evolves with new conversations over time. Unlike one-shot fine-tuning, Living Brain maintains persistent memory, growing knowledge, and consistent personality.
 
-## Features
+## Architecture
 
-- **Advanced Style Analysis**:
-  - Message length patterns
-  - Emoji usage frequency
-  - Slang and abbreviation patterns
-  - Capitalization habits
-  - Punctuation patterns
-  - Common phrases and expressions
-  - Response patterns
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     LIVING BRAIN                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │   STYLE      │    │   MEMORY     │    │   FACTS      │  │
+│  │   (LoRA)     │    │   (Vector DB)│    │   (Knowledge │  │
+│  │              │    │              │    │    Graph)    │  │
+│  │ Fine-tuned   │    │ Episodic     │    │ "I live in   │  │
+│  │ personality  │    │ memories,    │    │  NYC", etc   │  │
+│  │ & writing    │    │ conversations│    │              │  │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │
+│         │                   │                   │          │
+│         └───────────────────┼───────────────────┘          │
+│                             │                              │
+│                    ┌────────▼────────┐                     │
+│                    │   ORCHESTRATOR  │                     │
+│                    │   (Combines all │                     │
+│                    │    at inference)│                     │
+│                    └─────────────────┘                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- **Multiple LLM Support**:
-  - Llama-2
-  - Llama-3
-  - Mistral
-  - Falcon
-  - GPT
-  - Qwen
+### Components
 
-- **Optimization Features**:
-  - Parameter-Efficient Fine-Tuning (LoRA)
-  - 8-bit quantization support
-  - Gradient accumulation
-  - Mixed precision training
+1. **Style Layer (LoRA Adapter)**: Fine-tuned on your writing style, tone, emoji usage. Captures "how you talk" not "what you know".
 
-## Requirements
+2. **Memory Layer (ChromaDB)**: Stores conversation episodes as embeddings. Continuously updated with new conversations. Enables RAG retrieval at inference.
+
+3. **Facts Layer (Knowledge Graph)**: Extracted facts like "I work at X", "My dog is named Y". Timestamp-based conflict resolution. Can be manually edited.
+
+4. **Orchestrator**: Combines all layers at inference time for coherent responses.
+
+## Installation
 
 ```bash
-pip install pandas transformers torch datasets tensorboard peft
+# Clone the repository
+git clone https://github.com/your-username/living-brain
+cd living-brain
+
+# Install base package
+pip install -e .
+
+# Install with memory support (ChromaDB)
+pip install -e ".[core]"
+
+# Install with training support (Unsloth - fastest)
+pip install -e ".[train]"
+
+# Install with chat interface
+pip install -e ".[chat]"
+
+# Install everything
+pip install -e ".[all]"
 ```
 
-## Getting Started
+### GPU Requirements
 
-### 1. Chat Export and Parsing
+| Model | VRAM Required |
+|-------|---------------|
+| Llama 3.2 1B | 4GB |
+| Llama 3.2 3B | 8GB |
+| Qwen 2.5 3B | 8GB |
+| Qwen 2.5 7B | 16GB |
+| Llama 3.1 8B | 16GB |
 
-#### Chat Format Requirements
+## Quick Start
 
-Your WhatsApp chat export should follow this format:
-```
-[MM/DD/YY, HH:MM:SS AM/PM] Author: Message text here
-```
+### 1. Parse Your WhatsApp Export
 
-Example:
-```
-[01/13/24, 12:24:48 AM] Alex: Have you finished that project for work?
-[01/13/24, 12:52:48 AM] Jamie: I love those! Send me the title later.
-```
+Export your WhatsApp chat (Settings > Export Chat > Without Media).
 
-#### Supported Date Formats
-1. Standard WhatsApp format: `[MM/DD/YY, HH:MM:SS AM/PM]`
-2. Without seconds: `[MM/DD/YY, HH:MM AM/PM]`
-3. International format: `[DD/MM/YY, HH:MM:SS AM/PM]`
-4. ISO-like format: `[YYYY-MM-DD, HH:MM:SS AM/PM]`
-
-#### Export Instructions
-1. Open WhatsApp chat
-2. Tap ⋮ (three dots) > More > Export chat
-3. Choose 'Without media'
-4. Save the .txt file
-
-#### What to Include/Exclude
-- ✅ Include:
-  - Regular text messages
-  - Emoji messages
-  - URLs (they will be cleaned automatically)
-  - Normal conversation text
-
-- ❌ Exclude:
-  - Media messages (images, videos, documents)
-  - System messages
-  - Group settings changes
-  - Contact cards
-  - Location shares
-
-#### Parsing Your Chat
-
-Basic usage:
 ```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName"
-```
-
-Advanced usage:
-```bash
-python parser.py chat.txt "YourName" "OtherPerson" "YourName" \
-    --llm_format mistral \
-    --context_length 5
+living-brain parse chat.txt --your-name "Your Name" --output processed
 ```
 
 This generates:
-- `output_YYYYMMDD_HHMMSS.csv`: Original conversation pairs
-- `formatted_YourName.jsonl`: Training data
-- `style_metrics_YourName.json`: Style analysis
+- `processed.json` - Style metrics
+- `processed.jsonl` - Parsed messages
 
-### 2. Fine-tuning Process
+### Dataset Workbench
 
-After parsing your chat data, you can fine-tune a model:
+Launch the local UI for per-participant persona datasets and character files:
 
 ```bash
-python finetune.py \
-    --data_path formatted_YourName.jsonl \
-    --model_name "mistralai/Mistral-7B-v0.1" \
-    --output_dir "./my_chatbot" \
-    --style_metrics_path style_metrics_YourName.json \
-    --use_peft \
-    --use_8bit
+living-brain workbench --port 7861
 ```
 
-#### Model Selection Guide
+The workbench parses a WhatsApp `.txt` export, lets you choose a participant, and downloads a ZIP with canonical examples, SFT JSONL, DPO-style preference JSONL, eval rows, a style capsule, ElizaOS JSON, Character Card v2 JSON, and Markdown persona files. It is for messages you wrote or profiles with explicit permission.
 
-1. For Personal Use (Lower Resources):
-   - Llama3-8B (16GB VRAM)
-   - Qwen-7B (16GB VRAM)
-   - Mistral 7B (16GB VRAM)
-   - Llama-2 7B (16GB VRAM)
+The same workbench also has a **Sample Text** tab. Paste a small set of messages to get a research-backed recommendation for prompt cards, RAG, QLoRA SFT, DPO/KTO, low-data augmentation, code-switching behavior, and paralinguistic tags such as laughter, ellipsis, emoji, repeated punctuation, elongation, lowercase starts, all-caps, and discourse particles. The underlying study is in `docs/persona-methods-study.md`, with a machine-checkable 120-source corpus in `docs/persona-authenticity-source-corpus.jsonl`.
 
-2. For Better Quality (Higher Resources):
-   - Llama3-70B (80GB VRAM)
-   - Qwen-14B (28GB VRAM)
-   - Llama-2 13B (24GB VRAM)
-   - Falcon 40B (Multiple GPUs)
+### 2. Train Your Style Adapter
 
-## How Style Analysis Works
+```bash
+living-brain train chat.txt \
+    --your-name "Your Name" \
+    --model llama-3.2-3b \
+    --output ./models/my_style
+```
 
-The tool performs a comprehensive analysis of your chat style through multiple layers:
+Supported models:
+- `llama-3.2-1b`, `llama-3.2-3b` (recommended)
+- `qwen-2.5-3b`, `qwen-2.5-7b`
+- `llama-3.1-8b`, `mistral-7b`
 
-### Message Structure Analysis
+### 3. Ingest Conversations into Memory
 
-- **Length Patterns**
-  - Average message length
-  - Message length distribution
-  - Typical response lengths
+```bash
+living-brain ingest chat.txt \
+    --your-name "Your Name" \
+    --extract-facts
+```
 
-- **Emoji Usage**
-  - Detection and frequency analysis
-  - Favorite emoji patterns
-  - Contextual emoji usage
+### 4. Chat with Your Clone
 
-- **Slang and Abbreviations**
-  - Common internet slang (e.g., 'lol', 'omg', 'idk')
-  - Personal abbreviations
-  - Informal language patterns
+```bash
+living-brain chat --adapter my_style
+```
 
-### Writing Style Metrics
+Or with a GGUF model for faster CPU inference:
 
-- **Capitalization**
-  - Sentence start patterns
-  - Stylistic caps usage
-  - Name/proper noun capitalization
+```bash
+living-brain chat --gguf ./models/my_style.gguf
+```
 
-- **Punctuation**
-  - End-of-sentence patterns
-  - Multiple punctuation usage (!!!, ???)
-  - Informal punctuation style
+## Configuration
 
-- **Common Phrases**
-  - Frequent expressions
-  - Conversation starters/enders
-  - Personal catchphrases
+Create a `config.yaml` from the example:
 
-## Advanced Training Options
+```bash
+cp config.example.yaml config.yaml
+```
 
-### Memory Optimization
+Key settings:
 
-1. **8-bit Quantization**
-   ```bash
-   python finetune.py \
-       --data_path formatted_YourName.jsonl \
-       --use_8bit \
-       --batch_size 2
-   ```
+```yaml
+persona_name: "Your Name"
 
-2. **Gradient Accumulation**
-   ```bash
-   python finetune.py \
-       --gradient_accumulation_steps 8 \
-       --batch_size 1
-   ```
+model:
+  base_model: "unsloth/Llama-3.2-3B-Instruct"
+  load_in_4bit: true
 
-### Model-Specific Features
+memory:
+  top_k_retrieval: 5
 
-#### Llama3 Support
-- BF16 precision training
-- Flash Attention 2
-- 8192 token context
-- Example:
-  ```bash
-  python finetune.py \
-      --model_name "meta-llama/Llama-3-8b" \
-      --use_flash_attention \
-      --bf16
-  ```
+inference:
+  temperature: 0.7
+```
 
-#### Qwen Support
-- Custom chat template
-- Flash Attention
-- Example:
-  ```bash
-  python finetune.py \
-      --model_name "Qwen/Qwen-7B" \
-      --use_flash_attention
-  ```
+## Continuous Learning
 
-## Troubleshooting
+### Watch for New Exports
 
-### Common Issues
+Automatically process new WhatsApp exports:
 
-1. **Memory Errors**
-   - Reduce batch size
-   - Enable 8-bit training
-   - Use gradient accumulation
-   ```bash
-   python finetune.py \
-       --batch_size 1 \
-       --use_8bit \
-       --gradient_accumulation_steps 8
-   ```
+```bash
+living-brain watch ./exports --your-name "Your Name" --extract-facts
+```
 
-2. **Training Issues**
-   - Adjust learning rate
-   - Increase training data
-   - Try different models
-   ```bash
-   python finetune.py \
-       --learning_rate 1e-5 \
-       --num_epochs 5
-   ```
+Drop new chat exports into `./exports` and they'll be automatically ingested.
 
-3. **Parsing Issues**
-   - Check date format
-   - Verify chat export
-   - Clean input data
+### Memory Consolidation
 
-### Hardware Requirements
+Old memories are automatically consolidated to save space while preserving key information.
 
-1. **GPU Memory Requirements**
-   - 7B models: 16GB VRAM
-   - 13B models: 24GB VRAM
-   - 70B models: 80GB VRAM
-   - Multiple GPUs: Falcon 40B
+## Project Structure
 
-2. **Recommended Setup**
-   - NVIDIA GPU with CUDA support
-   - 32GB+ System RAM
-   - SSD for faster data loading
+```
+living_brain/
+├── ingest/
+│   ├── whatsapp_parser.py     # Parse WhatsApp exports
+│   ├── style_analyzer.py      # Analyze writing style
+│   └── watcher.py             # Watch for new exports
+├── memory/
+│   ├── vector_store.py        # ChromaDB wrapper
+│   ├── fact_store.py          # Knowledge graph
+│   ├── retriever.py           # RAG retrieval
+│   └── consolidator.py        # Memory compression
+├── style/
+│   ├── trainer.py             # Unsloth/LoRA training
+│   ├── data_formatter.py      # Training data formatting
+│   └── adapter_manager.py     # Adapter management
+├── inference/
+│   ├── orchestrator.py        # Combines all layers
+│   └── chat.py                # Gradio interface
+├── core/
+│   └── config.py              # Configuration
+└── main.py                    # CLI entry point
+```
 
-## Best Practices
+## API Usage
 
-### Data Preparation
-1. Use at least 1000 messages
-2. Include diverse conversations
-3. Clean irrelevant messages
-4. Maintain conversation context
+```python
+from living_brain.core.config import Config
+from living_brain.inference.orchestrator import Orchestrator
 
-### Training Configuration
-1. Start with smaller models
-2. Use default hyperparameters
-3. Monitor with TensorBoard
-4. Save checkpoints regularly
+# Initialize
+config = Config(persona_name="Alice")
+orchestrator = Orchestrator(config=config, adapter_name="alice_style")
 
-### Style Preservation
-1. Keep emoji patterns
-2. Maintain punctuation style
-3. Preserve message length patterns
-4. Retain personal phrases
+# Load model
+orchestrator.load_model()
 
-## Known Limitations
+# Chat
+response = orchestrator.chat("Hey, what's up?")
+print(response)
 
-1. **Data Format**
-   - WhatsApp format changes
-   - Regional date formats
-   - Media message handling
+# Add new memory
+orchestrator.add_to_memory("We talked about the weather today.")
+```
 
-2. **Resource Requirements**
-   - High VRAM usage
-   - Long training times
-   - System RAM needs
+## Tech Stack
 
-3. **Model Access**
-   - Llama model approval
-   - Usage restrictions
-   - License requirements
+| Component | Technology |
+|-----------|------------|
+| Base Models | Llama 3.2, Qwen 2.5, Mistral |
+| Fine-tuning | Unsloth + QLoRA (2x faster) |
+| Vector DB | ChromaDB (local, persistent) |
+| Embeddings | sentence-transformers |
+| Inference | llama.cpp (GGUF) or transformers |
+| UI | Gradio |
 
-4. **Quality Factors**
-   - Short conversation impact
-   - Mixed language handling
-   - Group chat dynamics
+## Supported Date Formats
 
-## Contributing
+The parser supports many WhatsApp export formats:
+- US: `[MM/DD/YY, HH:MM:SS AM/PM]`
+- EU: `[DD/MM/YY, HH:MM:SS]`
+- ISO: `YYYY-MM-DD, HH:MM:SS`
+- With/without brackets, with/without seconds
 
-Feel free to:
-- Submit issues
-- Propose features
-- Share improvements
-- Report bugs
+## Privacy
+
+All data stays local. No external APIs required for core functionality.
 
 ## License
 
-This project is licensed under the MIT License. See LICENSE file for details.
-
-## Acknowledgments
-
-- HuggingFace Transformers
-- Meta AI (Llama models)
-- WhatsApp chat format documentation
+MIT License - see [LICENSE](LICENSE) for details.
