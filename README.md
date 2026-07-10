@@ -1,7 +1,8 @@
 # WhatsApp LLM
 
-Local tools for turning authorized WhatsApp conversations into persona datasets,
-style cards, character files, fine-tuning inputs, and memory-backed chat.
+Local tools for building an evidence-grounded digital self from authorized
+WhatsApp conversations, owner interviews, relationship-specific behavior,
+time-aware memory, and optional style tuning.
 
 The package is still named `living-brain`, and the CLI command is
 `living-brain`.
@@ -9,6 +10,12 @@ The package is still named `living-brain`, and the CLI command is
 ## What It Does
 
 - Parse WhatsApp `.txt` exports across common date formats.
+- Read selected chats directly from WhatsApp for Mac or a local `wacli` mirror.
+- Build a versioned self model with provenance, confidence, validity windows,
+  contradictions, and owner confirmation.
+- Keep global identity separate from relationship-specific communication style.
+- Evaluate profile-only and retrieval-backed behavior on held-out chats and
+  explicit interview retests.
 - Analyze per-person writing style, emoji use, punctuation, and message length.
 - Build consented persona datasets for one selected participant.
 - Export SFT, DPO, eval, style capsule, and character-card artifacts.
@@ -27,6 +34,8 @@ not designed for deceptive impersonation or detector evasion.
 | Area | Features |
 | --- | --- |
 | WhatsApp parsing | Participant discovery, conversation splitting, system/media filtering, JSONL export |
+| Digital self | Guided owner interview, read-only multi-chat sources, versioned claims, temporal validity |
+| Relationships | Pseudonymous per-chat style deltas without treating contacts' words as owner identity |
 | Style analysis | Length, emoji, punctuation, capitalization, common phrases, response behavior |
 | Dataset workbench | Gradio UI, participant picker, consent gate, ZIP artifact download |
 | Training data | Canonical rows, Alpaca SFT, chat-message SFT, TRL DPO, OpenAI DPO, eval JSONL |
@@ -60,7 +69,88 @@ pip install -e ".[all]"
 
 Use `.[train]` only when you want the Unsloth-backed training stack.
 
-## Quick Start
+## General Digital Self
+
+The recommended architecture is layered:
+
+1. **Source events:** selected local messages remain the auditable evidence base.
+2. **Identity:** owner-confirmed interview claims and clearly labeled behavioral
+   candidates live in a versioned profile.
+3. **Memory:** relevant events are retrieved by owner, source, relationship, and
+   point in time.
+4. **Relationship context:** communication style can vary by relationship without
+   flattening everyone into one average voice.
+5. **Optional tuning:** a LoRA adapter may improve surface style later, but it is
+   never the source of truth for values, preferences, or current facts.
+
+Create and complete the private owner interview:
+
+```bash
+living-brain self interview \
+  --owner-name "Your Name" \
+  --output ./private/self-interview.yaml
+```
+
+List chats from WhatsApp for Mac. This opens the local database in SQLite
+read-only mode and does not print message bodies:
+
+```bash
+living-brain self chats --source whatsapp-mac
+```
+
+The native Mac schema is private and may change between WhatsApp releases. For
+a more stable linked-device mirror, point the same commands at the third-party
+[`wacli`](https://github.com/steipete/wacli) SQLite store:
+
+```bash
+living-brain self chats \
+  --source wacli \
+  --path ~/.wacli/wacli.db
+```
+
+Build from several explicitly selected source chat IDs:
+
+```bash
+living-brain self build \
+  --source whatsapp-mac \
+  --chat "first-source-chat-id" \
+  --chat "second-source-chat-id" \
+  --owner-name "Your Name" \
+  --interview ./private/self-interview.yaml \
+  --output ./private/digital-self.json
+
+living-brain self validate ./private/digital-self.json
+```
+
+Use `--all-chats` only after reviewing the source list. A stable pseudonym key is
+created at `~/.config/living-brain/pseudonym.key` by default; use `--key-file`
+to place it elsewhere. The profile contains owner-message hashes and aggregate
+style metrics, not owner message bodies. Third-party text is excluded unless
+`--include-third-party-context` is explicitly supplied, and even then it cannot
+support identity claims.
+
+Export the private held-out evaluation suite and a separate text-free summary:
+
+```bash
+living-brain self evaluate \
+  --source whatsapp-mac \
+  --chat "first-source-chat-id" \
+  --chat "second-source-chat-id" \
+  --owner-name "Your Name" \
+  --interview ./private/self-interview.yaml \
+  --profile ./private/digital-self.json \
+  --output ./private/self-evaluation.json \
+  --summary-output ./private/self-evaluation-summary.json
+```
+
+The private suite may contain held-out contact prompts and owner replies. It is
+written with owner-only permissions. The summary contains counts and coverage
+only, so it can be inspected without reproducing dialogue.
+
+## Persona Dataset Quick Start
+
+The export-based workbench remains available when the goal is a portable style
+dataset or a fine-tuning artifact.
 
 Export a WhatsApp chat as text:
 
@@ -256,7 +346,11 @@ from living_brain.core.config import Config
 from living_brain.inference.orchestrator import Orchestrator
 
 config = Config(persona_name="Alice")
-orchestrator = Orchestrator(config=config, adapter_name="alice_style")
+orchestrator = Orchestrator(
+    config=config,
+    profile_path="private/digital-self.json",
+    adapter_name="alice_style",  # Optional surface-style layer.
+)
 
 orchestrator.load_model()
 print(orchestrator.chat("hey, are we still on for later?"))
@@ -293,6 +387,7 @@ print(recommendation.to_markdown())
 ```text
 living_brain/
   core/          configuration
+  identity/      self model, interviews, read-only sources, prompt, evaluation
   ingest/        WhatsApp parsing, style analysis, dataset builders
   inference/     Gradio chat, dataset UI, orchestrator
   memory/        ChromaDB store, facts, retrieval, consolidation
@@ -310,6 +405,12 @@ tests/
 - Use the workbench only for your own messages, an organization voice you manage,
   or someone who gave explicit consent.
 - Keep raw WhatsApp exports local.
+- Treat the native WhatsApp Mac reader as version-sensitive and verify its schema
+  after app upgrades.
+- Treat `wacli` as a third-party linked device with best-effort history, not an
+  official WhatsApp API or guaranteed complete archive.
+- Keep the pseudonym key, interview, profile, and private evaluation suite out of
+  source control.
 - Leave third-party context disabled unless every included participant gave permission.
 - Review every generated dataset before training.
 - Treat synthetic rows as synthetic.
@@ -348,6 +449,8 @@ Run the focused lint checks locally:
 
 ```bash
 uvx ruff check tests \
+  living_brain/identity \
+  living_brain/main.py \
   living_brain/ingest/persona_dataset.py \
   living_brain/ingest/whatsapp_parser.py \
   living_brain/memory/fact_store.py \

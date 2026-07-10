@@ -6,7 +6,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
@@ -275,6 +275,8 @@ class VectorStore:
         top_k: int = 5,
         min_score: float = 0.0,
         filter_metadata: dict | None = None,
+        before: datetime | None = None,
+        after: datetime | None = None,
     ) -> list[tuple[MemoryEntry, float]]:
         """
         Search for relevant memories.
@@ -284,6 +286,8 @@ class VectorStore:
             top_k: Number of results to return
             min_score: Minimum similarity score (0-1)
             filter_metadata: Optional metadata filter
+            before: Exclude memories newer than this time
+            after: Exclude memories older than this time
 
         Returns:
             List of (MemoryEntry, score) tuples sorted by relevance
@@ -295,9 +299,10 @@ class VectorStore:
         if filter_metadata:
             where = {k: str(v) for k, v in filter_metadata.items()}
 
+        candidate_count = top_k * 4 if before or after else top_k
         results = self._collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k,
+            n_results=max(1, candidate_count),
             where=where,
             include=["documents", "metadatas", "distances"],
         )
@@ -312,9 +317,15 @@ class VectorStore:
             if score < min_score:
                 continue
 
-            metadata = results["metadatas"][0][i]
+            metadata = dict(results["metadatas"][0][i])
             timestamp = datetime.fromisoformat(metadata.pop("timestamp"))
             metadata.pop("content_preview", None)
+
+            comparable_timestamp = self._as_utc(timestamp)
+            if after and comparable_timestamp < self._as_utc(after):
+                continue
+            if before and comparable_timestamp > self._as_utc(before):
+                continue
 
             entry = MemoryEntry(
                 id=doc_id,
@@ -323,8 +334,16 @@ class VectorStore:
                 metadata=metadata,
             )
             entries.append((entry, score))
+            if len(entries) >= top_k:
+                break
 
         return entries
+
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
     def get_recent(self, limit: int = 10) -> list[MemoryEntry]:
         """Get the most recent memories."""

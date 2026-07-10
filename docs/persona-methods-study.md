@@ -1,10 +1,65 @@
-# Persona Dataset Workbench Study
+# General Digital-Self Methods Study
 
 ## Objective
 
-Build a local workbench that turns WhatsApp exports into consented, per-person style profiles, fine-tuning datasets, evaluation rows, and portable character files. The product goal is authorized style simulation and drafting, not deceptive impersonation or detector evasion.
+Build a local system that uses authorized WhatsApp conversations and explicit
+owner self-report to simulate one person's identity, memory, decisions, and
+relationship-conditioned communication. Portable style datasets remain useful,
+but they are one optional layer rather than the digital self itself. The product
+goal is owner-controlled simulation and drafting, not autonomous representation,
+deceptive impersonation, or detector evasion.
 
-## Recommended Ranking
+## Recommended Digital-Self Architecture
+
+The implementation uses a layered hybrid instead of asking one fine-tuned model
+to contain everything:
+
+| Layer | Owns | Must Not Own |
+|---|---|---|
+| Source events | Immutable local message events, timestamps, source IDs, content hashes | Inferred identity |
+| Identity model | Versioned claims, provenance, confidence, validity windows, supersession, conflicts | Raw contact dialogue by default |
+| Relationship model | Pseudonymous per-relationship communication deltas | A contact's private facts or words as owner identity |
+| Temporal memory | Owner/source/relationship-scoped retrieval bounded by the requested point in time | Current truth without validity checks |
+| Surface style | Aggregate writing metrics and an optional LoRA adapter | Values, authority, current preferences, or factual memory |
+| Evaluation | Held-out chat/time groups, interview retests, blind owner comparisons | Training rows or configuration-revealing ratings |
+
+WhatsApp evidence is strong for observed behavior but incomplete for motives,
+values, private goals, and the reasons behind decisions. A guided owner interview
+therefore supplies confirmed claims while message-derived style remains a
+candidate inference. Conflicting current claims remain visible; the runtime does
+not collapse them into a false certainty.
+
+This approach borrows the useful local-memory and self-modeling direction of
+[Second-Me](https://github.com/mindverse/Second-Me), but keeps the canonical self
+model portable and inspectable. Parameter training is optional and must beat the
+profile-plus-retrieval baseline in blinded owner evaluation before becoming the
+default.
+
+## Local Source Acquisition
+
+Three adapters share one normalized, read-only message contract:
+
+- `whatsapp-mac` opens WhatsApp for Mac's private `ChatStorage.sqlite` in SQLite
+  `mode=ro`, enables `query_only`, and reads inside a transaction. This avoids
+  manual text exports but is version-sensitive because WhatsApp does not publish
+  that schema.
+- `wacli` reads the local SQLite mirror produced by the third-party
+  [`wacli`](https://github.com/steipete/wacli) linked device. Its upstream history
+  sync is explicitly best-effort, so completeness must be measured rather than
+  assumed.
+- `json` is a portable fixture/interchange source for testing and offline tools.
+
+All chat, relationship, and sender identifiers are transformed with a stable
+keyed HMAC before they enter the profile. Source inspection shows chat names and
+source IDs locally so the owner can select chats; profile artifacts retain only
+pseudonymous IDs. Owner message bodies become hashes in identity evidence.
+Third-party text is excluded by default and can never support an owner claim.
+
+## Style And Tuning Ranking
+
+This ranking applies to the surface-style layer after the self model and
+evaluation split exist. It is not a ranking of complete digital-self
+architectures.
 
 | Rank | Method | Dataset Needed | When To Use | Recommendation |
 |---:|---|---|---|---|
@@ -22,11 +77,12 @@ Build a local workbench that turns WhatsApp exports into consented, per-person s
 
 The staged product path is:
 
-1. Consent, import, and redaction.
-2. Per-participant style card and character export.
-3. SFT-ready examples for users with enough target replies.
-4. Preference examples from explicit feedback or clearly labeled synthetic negatives.
-5. Distribution checks against held-out chats before any training run is trusted.
+1. Consent, explicit chat selection, local normalization, and pseudonymization.
+2. Owner interview plus a versioned, inspectable identity profile.
+3. Relationship and temporal style summaries from training groups only.
+4. Profile-only and retrieval-backed baselines on held-out chat/time groups.
+5. SFT-ready examples and preference feedback only when the baseline justifies tuning.
+6. Blinded owner comparisons before any adapter becomes the default.
 
 ## Evidence Corpus
 
@@ -82,6 +138,10 @@ For this repo, the existing `DataFormatter` already supports Alpaca, ChatML, and
 - Character Card v2 and Markdown persona files
 
 ## Dataset Contracts
+
+The contracts below support style training and portable character exports. The
+canonical digital-self profile is separate: it stores claims and evidence
+metadata, not SFT prompt/target rows.
 
 ### Canonical Row
 
@@ -234,7 +294,29 @@ The workbench should support only:
 - an organization/team voice the uploader administers
 - a person who gave explicit consent
 
-It should not optimize for "undetectable AI" or "make people believe this person wrote it." Drafts should be labeled, reviewed, and never auto-sent. Other participants' messages may be used as context for a target reply dataset, but they should not become target style examples unless separately consented. Raw WhatsApp quotes should stay out of shared character-card exports by default.
+It should not optimize for "undetectable AI" or "make people believe this person wrote it." The system prompt identifies the output as a simulation, denies live authority for the owner, and forbids autonomous message sending or commitments. Drafts should be labeled, reviewed, and never auto-sent. Other participants' messages may be used as context for a target reply dataset, but they should not become target style examples unless separately consented. Raw WhatsApp quotes should stay out of shared character-card exports by default.
+
+## General Digital-Self Evaluation
+
+Evaluation rows have stable IDs derived from their held-out source turn or
+explicit interview question, never from the inference configuration. This lets a
+future adapter join the comparison without changing the test set.
+
+The required evaluation coverage is:
+
+- latest preference and point-in-time correctness
+- superseded beliefs or behavior
+- unresolved contradiction handling
+- grounding in confirmed claims or relevant evidence
+- abstention when the profile is insufficient
+- relationship leakage and third-party privacy
+
+The baseline configurations are generic, profile-only, and
+profile-plus-retrieval. Candidate outputs are exported to an A/B owner rating
+sheet with random-looking A/B assignment; the configuration mapping is kept in a
+separate answer key. Automatic summaries contain only counts and coverage. The
+private suite may contain held-out dialogue and is written with owner-only
+filesystem permissions.
 
 ## Sources
 
@@ -251,4 +333,7 @@ It should not optimize for "undetectable AI" or "make people believe this person
 - OpenAI supervised fine-tuning: https://developers.openai.com/api/docs/guides/supervised-fine-tuning
 - OpenAI direct preference optimization: https://developers.openai.com/api/docs/guides/direct-preference-optimization
 - Character Card v2: https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md
+- Second-Me repository: https://github.com/mindverse/Second-Me
+- AI-native Memory 2.0 / Second Me: https://arxiv.org/abs/2503.08102
+- wacli repository: https://github.com/steipete/wacli
 - Lissin naturalness report: https://lissin-naturalness-report.pages.dev/

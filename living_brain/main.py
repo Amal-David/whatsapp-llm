@@ -3,7 +3,10 @@ Main entry point for Living Brain CLI.
 """
 
 import argparse
+import json
 import logging
+import os
+import secrets
 import sys
 from pathlib import Path
 
@@ -12,6 +15,11 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+DEFAULT_WHATSAPP_MAC_DATABASE = Path.home() / (
+    "Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ChatStorage.sqlite"
+)
+DEFAULT_PSEUDONYM_KEY = Path.home() / ".config/living-brain/pseudonym.key"
 
 
 def cmd_parse(args):
@@ -276,6 +284,214 @@ def cmd_stats(args):
         print(f"\nAdapters: Error - {e}")
 
 
+def _load_pseudonym_key(path):
+    """Load or create a stable local pseudonym key with owner-only permissions."""
+    key_path = Path(path).expanduser()
+    if key_path.exists():
+        key = key_path.read_bytes()
+    else:
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        key = secrets.token_bytes(32)
+        descriptor = os.open(
+            key_path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+        try:
+            os.write(descriptor, key)
+        finally:
+            os.close(descriptor)
+    if len(key) < 16:
+        raise ValueError("pseudonym key must contain at least 16 bytes")
+    key_path.chmod(0o600)
+    return key
+
+
+def _identity_source(args):
+    """Create one local message source without opening it for writes."""
+    from .identity.sources import JsonMessageSource
+    from .identity.wacli import WacliSource
+    from .identity.whatsapp_mac import WhatsAppMacSource
+
+    source_path = Path(args.path).expanduser() if args.path else None
+    key = _load_pseudonym_key(args.key_file)
+    if args.source == "whatsapp-mac":
+        return WhatsAppMacSource(
+            source_path or DEFAULT_WHATSAPP_MAC_DATABASE,
+            pseudonym_key=key,
+        )
+    if source_path is None:
+        raise ValueError(f"--path is required for the {args.source} source")
+    if args.source == "wacli":
+        return WacliSource(source_path, pseudonym_key=key)
+    if args.source == "json":
+        return JsonMessageSource(source_path, pseudonym_key=key)
+    raise ValueError(f"unsupported message source: {args.source}")
+
+
+def _identity_build_result(args):
+    from .identity.builder import DigitalSelfBuilder
+    from .identity.interview import load_interview
+
+    source = _identity_source(args)
+    messages = source.read_messages(
+        chat_ids=args.chat,
+        all_chats=args.all_chats,
+    )
+    interview = load_interview(args.interview) if args.interview else None
+    result = DigitalSelfBuilder(
+        include_third_party_context=args.include_third_party_context,
+    ).build(
+        messages,
+        owner_name=args.owner_name,
+        interview=interview,
+    )
+    return result, interview
+
+
+def cmd_self_interview(args):
+    """Create an editable owner interview."""
+    from .identity.interview import write_interview_template
+
+    output_path = write_interview_template(args.output, args.owner_name)
+    print(f"Interview template written to: {output_path}")
+
+
+def cmd_self_chats(args):
+    """Inspect locally available chats without reading message bodies."""
+    chats = _identity_source(args).list_chats()
+    print(f"Found {len(chats)} chats")
+    for chat in chats:
+        last_message = chat.last_message_at.isoformat() if chat.last_message_at else "unknown"
+        print(
+            json.dumps(
+                {
+                    "source_chat_id": chat.source_chat_id,
+                    "display_name": chat.display_name,
+                    "kind": chat.kind,
+                    "message_count": chat.message_count,
+                    "last_message_at": last_message,
+                },
+                ensure_ascii=True,
+                sort_keys=True,
+            )
+        )
+
+
+def cmd_self_build(args):
+    """Build a general digital-self profile from selected local chats."""
+    result, _interview = _identity_build_result(args)
+    result.profile.save(args.output)
+    split_counts = {
+        split: len(messages) for split, messages in result.messages_by_split.items()
+    }
+    print(f"Digital-self profile written to: {args.output}")
+    print(
+        f"Selected {result.profile.source_summary['chat_count']} chats and "
+        f"{result.profile.source_summary['owner_message_count']} owner messages"
+    )
+    print(f"Message split counts: {split_counts}")
+
+
+def cmd_self_validate(args):
+    """Validate a serialized digital-self profile."""
+    from .identity.models import DigitalSelfProfile
+
+    profile = DigitalSelfProfile.load(args.profile)
+    profile.validate()
+    print(
+        f"Profile is valid: {profile.owner_name}; "
+        f"{len(profile.claims)} claims; {len(profile.relationships)} relationships"
+    )
+
+
+def cmd_self_evaluate(args):
+    """Export private held-out and interview-retest evaluation rows."""
+    from .identity.evaluation import EvaluationSuiteBuilder
+    from .identity.models import DigitalSelfProfile
+
+    result, interview = _identity_build_result(args)
+    if args.profile:
+        profile = DigitalSelfProfile.load(args.profile)
+        if profile.owner_id != result.profile.owner_id:
+            raise ValueError("evaluation source owner does not match --profile")
+        if profile.source_summary != result.profile.source_summary:
+            raise ValueError("evaluation source selection does not match --profile")
+
+    suite = EvaluationSuiteBuilder().build(result, interview=interview)
+    suite.save(args.output)
+    summary_path = (
+        Path(args.summary_output)
+        if args.summary_output
+        else Path(args.output).with_name(f"{Path(args.output).stem}-summary.json")
+    )
+    suite.save_summary(summary_path)
+    missing = suite.summary()["missing_required_tags"]
+    print(f"Private evaluation suite written to: {args.output}")
+    print(f"Text-free evaluation summary written to: {summary_path}")
+    print(
+        "Required coverage: complete"
+        if not missing
+        else f"Required coverage still missing: {', '.join(missing)}"
+    )
+
+
+def cmd_self(args):
+    """Dispatch digital-self subcommands."""
+    commands = {
+        "interview": cmd_self_interview,
+        "chats": cmd_self_chats,
+        "build": cmd_self_build,
+        "validate": cmd_self_validate,
+        "evaluate": cmd_self_evaluate,
+    }
+    commands[args.self_command](args)
+
+
+def _add_self_source_arguments(parser, *, selection=False):
+    parser.add_argument(
+        "--source",
+        choices=["whatsapp-mac", "wacli", "json"],
+        default="whatsapp-mac",
+        help="Local read-only message source",
+    )
+    parser.add_argument(
+        "--path",
+        help=(
+            "Source database or JSON path; WhatsApp Mac uses its standard "
+            "ChatStorage.sqlite location by default"
+        ),
+    )
+    parser.add_argument(
+        "--key-file",
+        default=str(DEFAULT_PSEUDONYM_KEY),
+        help="Local secret used to create stable pseudonymous identifiers",
+    )
+    if selection:
+        parser.add_argument(
+            "--chat",
+            action="append",
+            default=[],
+            help="Source chat ID to include; repeat for multiple chats",
+        )
+        parser.add_argument(
+            "--all-chats",
+            action="store_true",
+            help="Include every chat from the selected source",
+        )
+
+
+def _add_self_build_arguments(parser):
+    _add_self_source_arguments(parser, selection=True)
+    parser.add_argument("--owner-name", required=True, help="Name of the profile owner")
+    parser.add_argument("--interview", help="Completed owner interview YAML")
+    parser.add_argument(
+        "--include-third-party-context",
+        action="store_true",
+        help="Store third-party text as context, never as identity evidence",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Living Brain: A Continuous Personal AI Clone",
@@ -354,6 +570,58 @@ def main():
     # Stats command
     subparsers.add_parser("stats", help="Show system statistics")
 
+    # General digital-self commands
+    self_parser = subparsers.add_parser(
+        "self",
+        help="Build and evaluate a general digital self",
+    )
+    self_subparsers = self_parser.add_subparsers(
+        dest="self_command",
+        required=True,
+        help="Digital-self commands",
+    )
+
+    interview_parser = self_subparsers.add_parser(
+        "interview",
+        help="Create a guided owner interview",
+    )
+    interview_parser.add_argument("--owner-name", required=True, help="Profile owner")
+    interview_parser.add_argument("--output", required=True, help="Interview YAML path")
+
+    chats_parser = self_subparsers.add_parser(
+        "chats",
+        help="List chats from a local read-only source",
+    )
+    _add_self_source_arguments(chats_parser)
+
+    build_parser = self_subparsers.add_parser(
+        "build",
+        help="Build a versioned digital-self profile",
+    )
+    _add_self_build_arguments(build_parser)
+    build_parser.add_argument("--output", required=True, help="Profile JSON path")
+
+    validate_parser = self_subparsers.add_parser(
+        "validate",
+        help="Validate a digital-self profile",
+    )
+    validate_parser.add_argument("profile", help="Profile JSON path")
+
+    evaluate_parser = self_subparsers.add_parser(
+        "evaluate",
+        help="Export held-out and interview-retest evaluation artifacts",
+    )
+    _add_self_build_arguments(evaluate_parser)
+    evaluate_parser.add_argument(
+        "--profile",
+        help="Existing profile whose owner and source summary must match",
+    )
+    evaluate_parser.add_argument("--output", required=True, help="Private suite JSON path")
+    evaluate_parser.add_argument(
+        "--summary-output",
+        help="Text-free summary path (defaults beside the private suite)",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -369,6 +637,7 @@ def main():
         "ingest": cmd_ingest,
         "watch": cmd_watch,
         "stats": cmd_stats,
+        "self": cmd_self,
     }
 
     try:

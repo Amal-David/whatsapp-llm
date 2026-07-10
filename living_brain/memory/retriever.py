@@ -5,6 +5,7 @@ Memory retriever combining vector store and fact store for RAG.
 import html
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 
 from .fact_store import Fact, FactStore
 from .vector_store import MemoryEntry, VectorStore
@@ -58,6 +59,11 @@ class MemoryRetriever:
         include_facts: bool = True,
         include_memories: bool = True,
         fact_query: str | None = None,
+        owner_id: str | None = None,
+        source: str | None = None,
+        relationship_id: str | None = None,
+        as_of: datetime | None = None,
+        after: datetime | None = None,
     ) -> RetrievalResult:
         """
         Retrieve relevant context for a query.
@@ -67,6 +73,11 @@ class MemoryRetriever:
             include_facts: Whether to include facts in the result
             include_memories: Whether to include episodic memories
             fact_query: Optional separate query for fact search
+            owner_id: Optional owner metadata scope
+            source: Optional source metadata scope
+            relationship_id: Optional relationship metadata scope
+            as_of: Exclude memories newer than this time
+            after: Exclude memories older than this time
 
         Returns:
             RetrievalResult with memories, facts, and formatted context
@@ -76,10 +87,22 @@ class MemoryRetriever:
 
         # Retrieve episodic memories
         if include_memories:
+            filters = {
+                key: value
+                for key, value in {
+                    "owner_id": owner_id,
+                    "source": source,
+                    "relationship_id": relationship_id,
+                }.items()
+                if value is not None
+            }
             memories = self.vector_store.search(
                 query=query,
                 top_k=self.top_k_memories,
                 min_score=self.min_memory_score,
+                filter_metadata=filters or None,
+                before=as_of,
+                after=after,
             )
             logger.debug(f"Retrieved {len(memories)} memories for query: {query[:50]}...")
 

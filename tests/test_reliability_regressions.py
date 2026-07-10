@@ -15,6 +15,7 @@ from living_brain.ingest.watcher import ExportWatcher, WhatsAppExportHandler
 from living_brain.memory.fact_store import Fact, FactStore
 from living_brain.memory.retriever import MemoryRetriever
 from living_brain.memory.vector_store import MemoryEntry, VectorStore
+from living_brain.style.trainer import StyleTrainer
 
 
 def test_fact_store_rejects_corrupt_persistence(tmp_path):
@@ -190,3 +191,12 @@ def test_workbench_cleans_up_sensitive_temporary_artifacts():
     assert export_path.exists()
     workbench.cleanup_temp_files()
     assert not export_path.exists()
+
+
+def test_style_trainer_fails_loudly_when_lazy_loading_does_not_initialize_state():
+    trainer = object.__new__(StyleTrainer)
+    trainer.model = None
+    trainer.tokenizer = None
+
+    with pytest.raises(RuntimeError, match="model and tokenizer did not initialize"):
+        trainer._require_loaded_state()

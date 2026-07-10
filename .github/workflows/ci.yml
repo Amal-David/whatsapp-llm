@@ -26,6 +26,7 @@ jobs:
       - name: Smoke test CLI
         run: |
           python -m living_brain.main --help
+          python -m living_brain.main self --help
           python -m living_brain.main parse sample_chat.txt --your-name Alex --date-order mdy --output /tmp/living-brain-smoke
       - name: Run tests
         run: pytest tests -q -o addopts=''
@@ -33,10 +34,12 @@ jobs:
         run: >-
           ruff check tests
           living_brain/core/config.py
+          living_brain/identity
           living_brain/inference/chat.py
           living_brain/inference/dataset_ui.py
           living_brain/inference/orchestrator.py
           living_brain/ingest/persona_dataset.py
+          living_brain/ingest/sample_recommender.py
           living_brain/ingest/style_analyzer.py
           living_brain/ingest/watcher.py
           living_brain/ingest/whatsapp_parser.py
@@ -44,14 +47,17 @@ jobs:
           living_brain/memory/fact_store.py
           living_brain/memory/retriever.py
           living_brain/memory/vector_store.py
+          living_brain/style/trainer.py
       - name: Run focused type checks
         run: >-
           mypy
           living_brain/core/config.py
+          living_brain/identity
           living_brain/inference/chat.py
           living_brain/inference/dataset_ui.py
           living_brain/inference/orchestrator.py
           living_brain/ingest/persona_dataset.py
+          living_brain/ingest/sample_recommender.py
           living_brain/ingest/style_analyzer.py
           living_brain/ingest/watcher.py
           living_brain/ingest/whatsapp_parser.py
@@ -59,3 +65,4 @@ jobs:
           living_brain/memory/fact_store.py
           living_brain/memory/retriever.py
           living_brain/memory/vector_store.py
+          living_brain/style/trainer.py
