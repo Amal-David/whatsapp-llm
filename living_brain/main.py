@@ -19,7 +19,7 @@ def cmd_parse(args):
     from .ingest.style_analyzer import StyleAnalyzer
     from .ingest.whatsapp_parser import WhatsAppParser
 
-    parser = WhatsAppParser(your_name=args.your_name)
+    parser = WhatsAppParser(your_name=args.your_name, date_order=args.date_order)
 
     # Get participants
     participants = parser.get_participants(args.input)
@@ -161,15 +161,17 @@ def cmd_ingest(args):
     # Add to memory
     memories_added = 0
     for conv in conversations:
-        vector_store.add(
+        memory_ids = vector_store.add_chunked(
             content=conv.to_text(),
             timestamp=conv.start_time,
             metadata={
                 "source": str(args.input),
                 "message_count": len(conv.messages),
             },
+            chunk_size=config.memory.chunk_size,
+            chunk_overlap=config.memory.chunk_overlap,
         )
-        memories_added += 1
+        memories_added += len(memory_ids)
 
     print(f"Added {memories_added} memories")
 
@@ -207,6 +209,8 @@ def cmd_watch(args):
         vector_store=vector_store,
         fact_store=fact_store,
         auto_extract_facts=args.extract_facts,
+        chunk_size=config.memory.chunk_size,
+        chunk_overlap=config.memory.chunk_overlap,
     )
 
     # Process existing files first
@@ -291,6 +295,12 @@ def main():
     parse_parser.add_argument("--your-name", "-n", required=True, help="Your name in the chat")
     parse_parser.add_argument("--output", "-o", help="Output path for processed data")
     parse_parser.add_argument("--gap-minutes", type=int, default=60, help="Gap to split conversations")
+    parse_parser.add_argument(
+        "--date-order",
+        choices=["mdy", "dmy"],
+        default="mdy",
+        help="Order for ambiguous slash dates",
+    )
 
     # Train command
     train_parser = subparsers.add_parser("train", help="Train a style adapter")

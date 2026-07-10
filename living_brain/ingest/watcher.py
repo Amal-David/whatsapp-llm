@@ -4,21 +4,21 @@ File watcher for continuous ingestion of new WhatsApp exports.
 
 import logging
 import time
-from datetime import datetime
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 try:
+    from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
-    from watchdog.events import FileSystemEventHandler, FileCreatedEvent
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
 
 
-class WhatsAppExportHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else object):
+class WhatsAppExportHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else object):  # type: ignore[misc]
     """Handler for new WhatsApp export files."""
 
     def __init__(
@@ -57,7 +57,6 @@ class WhatsAppExportHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else ob
         if str(filepath) in self._processed_files:
             return
 
-        self._processed_files.add(str(filepath))
         logger.info(f"New file detected: {filepath}")
 
         # Wait a moment for the file to be fully written
@@ -65,6 +64,7 @@ class WhatsAppExportHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else ob
 
         try:
             self.on_new_file(filepath)
+            self._processed_files.add(str(filepath))
         except Exception as e:
             logger.error(f"Error processing file {filepath}: {e}")
 
@@ -81,6 +81,8 @@ class ExportWatcher:
         vector_store=None,
         fact_store=None,
         auto_extract_facts: bool = True,
+        chunk_size: int = 512,
+        chunk_overlap: int = 50,
     ):
         """
         Initialize the watcher.
@@ -105,9 +107,11 @@ class ExportWatcher:
         self.vector_store = vector_store
         self.fact_store = fact_store
         self.auto_extract_facts = auto_extract_facts
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
 
-        self._observer = None
-        self._handler = None
+        self._observer: Any = None
+        self._handler: WhatsAppExportHandler | None = None
         self._is_running = False
 
         # Stats
@@ -118,15 +122,15 @@ class ExportWatcher:
     def _process_file(self, filepath: Path) -> None:
         """Process a new WhatsApp export file."""
         from .whatsapp_parser import WhatsAppParser
-        from .style_analyzer import StyleAnalyzer
 
         logger.info(f"Processing: {filepath}")
 
         # Handle zip files
         if filepath.suffix == ".zip":
-            filepath = self._extract_zip(filepath)
-            if filepath is None:
+            extracted_path = self._extract_zip(filepath)
+            if extracted_path is None:
                 return
+            filepath = extracted_path
 
         # Parse the file
         parser = WhatsAppParser(your_name=self.your_name)
@@ -149,12 +153,14 @@ class ExportWatcher:
                     "message_count": len(conv.messages),
                 }
 
-                self.vector_store.add(
+                chunk_ids = self.vector_store.add_chunked(
                     content=conv_text,
                     timestamp=conv.start_time,
                     metadata=metadata,
+                    chunk_size=self.chunk_size,
+                    chunk_overlap=self.chunk_overlap,
                 )
-                self._memories_added += 1
+                self._memories_added += len(chunk_ids)
 
         # Extract facts
         if self.fact_store and self.auto_extract_facts:
@@ -169,28 +175,25 @@ class ExportWatcher:
             f"{len(your_messages)} messages"
         )
 
-    def _extract_zip(self, zip_path: Path) -> Optional[Path]:
+    def _extract_zip(self, zip_path: Path) -> Path | None:
         """Extract a zip file and return the txt file path."""
         import zipfile
 
-        try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                # Find txt files
-                txt_files = [f for f in zf.namelist() if f.endswith('.txt')]
-                if not txt_files:
-                    logger.warning(f"No txt files found in {zip_path}")
-                    return None
+        with zipfile.ZipFile(zip_path) as zf:
+            txt_files = [name for name in zf.namelist() if name.endswith(".txt")]
+            if not txt_files:
+                raise ValueError(f"No txt files found in {zip_path}")
 
-                # Extract to same directory
-                txt_file = txt_files[0]
-                extract_path = zip_path.parent / txt_file
-                zf.extract(txt_file, zip_path.parent)
+            txt_file = txt_files[0]
+            member_path = Path(txt_file)
+            if member_path.is_absolute() or ".." in member_path.parts:
+                raise ValueError(f"Unsafe archive member: {txt_file}")
 
-                return extract_path
+            extract_path = Path(zf.extract(txt_file, zip_path.parent)).resolve()
+            if not extract_path.is_relative_to(zip_path.parent.resolve()):
+                raise ValueError(f"Archive member escapes watch directory: {txt_file}")
 
-        except Exception as e:
-            logger.error(f"Failed to extract {zip_path}: {e}")
-            return None
+            return extract_path
 
     def start(self, blocking: bool = True) -> None:
         """
@@ -208,9 +211,10 @@ class ExportWatcher:
             on_new_file=self._process_file,
         )
 
-        self._observer = Observer()
-        self._observer.schedule(self._handler, str(self.watch_dir), recursive=False)
-        self._observer.start()
+        observer = Observer()
+        observer.schedule(self._handler, str(self.watch_dir), recursive=False)
+        observer.start()
+        self._observer = observer
         self._is_running = True
 
         logger.info(f"Watching for new exports in: {self.watch_dir}")

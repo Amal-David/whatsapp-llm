@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from ..core.config import Config
 from ..ingest.style_analyzer import StyleMetrics
@@ -70,12 +71,20 @@ class Orchestrator:
         self.style_metrics: StyleMetrics | None = None
 
         # Model (lazy loaded)
-        self._model = None
-        self._tokenizer = None
-        self._llama_model = None  # For GGUF
+        self._model: Any | None = None
+        self._tokenizer: Any | None = None
+        self._llama_model: Any | None = None  # For GGUF
 
         # Conversation history
         self._history: list[dict] = []
+
+    def _get_fact_store(self) -> FactStore:
+        """Load the lightweight fact store without requiring ChromaDB."""
+        if self.fact_store is None:
+            self.fact_store = FactStore(
+                facts_path=self.config.facts.facts_path,
+            )
+        return self.fact_store
 
     def _get_retriever(self) -> MemoryRetriever:
         """Lazy load memory stores only when memory or facts are requested."""
@@ -85,13 +94,12 @@ class Orchestrator:
                 collection_name=self.config.memory.collection_name,
                 embedding_model=self.config.model.embedding_model,
             )
-            self.fact_store = FactStore(
-                facts_path=self.config.facts.facts_path,
-            )
             self.retriever = MemoryRetriever(
                 vector_store=self.vector_store,
-                fact_store=self.fact_store,
+                fact_store=self._get_fact_store(),
                 top_k_memories=self.config.memory.top_k_retrieval,
+                max_context_chars=self.config.memory.max_context_chars,
+                max_facts=self.config.memory.max_facts,
             )
         return self.retriever
 
@@ -327,6 +335,8 @@ class Orchestrator:
         """Generate using llama.cpp."""
         if self._llama_model is None:
             self.load_model()
+        if self._llama_model is None:
+            raise RuntimeError("GGUF model did not initialize")
 
         output = self._llama_model(
             prompt,
@@ -352,6 +362,8 @@ class Orchestrator:
         """Generate using transformers."""
         if self._model is None:
             self.load_model()
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("Transformers model did not initialize")
 
         inputs = self._tokenizer(prompt, return_tensors="pt").to(self._model.device)
         input_length = inputs.input_ids.shape[1]
@@ -396,6 +408,15 @@ class Orchestrator:
             conversation_text=conversation,
             timestamp=timestamp,
             extract_facts=self.config.facts.auto_extract,
+        )
+
+    def add_fact(self, subject: str, predicate: str, obj: str):
+        """Add a fact without initializing vector memory."""
+        return self._get_fact_store().add(
+            subject=subject,
+            predicate=predicate,
+            obj=obj,
+            source="manual",
         )
 
     def get_stats(self) -> dict:

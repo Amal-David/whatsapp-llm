@@ -9,13 +9,13 @@ Supports date formats from various regions:
 - Time formats: 12h (AM/PM), 24h
 """
 
-import re
+import json
 import logging
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ class ChatMessage:
 class Conversation:
     """A conversation (episode) containing multiple messages."""
     messages: list[ChatMessage] = field(default_factory=list)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
     def add_message(self, msg: ChatMessage) -> None:
         self.messages.append(msg)
@@ -107,16 +107,8 @@ class WhatsAppParser:
         r"(\d{1,2}\.\d{1,2}\.\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.+)",
     ]
 
-    # Date format candidates for parsing
-    DATE_FORMATS = [
-        "%m/%d/%y",      # US short
-        "%m/%d/%Y",      # US long
-        "%d/%m/%y",      # EU short
-        "%d/%m/%Y",      # EU long
-        "%Y-%m-%d",      # ISO
-        "%d.%m.%y",      # Dot short
-        "%d.%m.%Y",      # Dot long
-    ]
+    MDY_DATE_FORMATS = ["%m/%d/%y", "%m/%d/%Y"]
+    DMY_DATE_FORMATS = ["%d/%m/%y", "%d/%m/%Y"]
 
     # Time format candidates
     TIME_FORMATS = [
@@ -155,23 +147,50 @@ class WhatsAppParser:
         r"Missed video call",
     ]
 
-    def __init__(self, your_name: Optional[str] = None):
+    # WhatsApp events have timestamps but no ``author:`` separator. Parse them
+    # separately so they cannot become multiline continuations of a user message.
+    SYSTEM_LINE_PATTERNS = [
+        r"\[(\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4}),?\s*"
+        r"(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[APap][Mm])?)\]\s*(.+)",
+        r"(\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4}),?\s*"
+        r"(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[APap][Mm])?)\s*-\s*(.+)",
+    ]
+
+    def __init__(self, your_name: str | None = None, date_order: str = "mdy"):
         """
         Initialize the parser.
 
         Args:
             your_name: Your name as it appears in the chat export.
                       Used to identify your messages vs others.
+            date_order: How to interpret ambiguous slash dates: ``mdy`` or ``dmy``.
         """
+        if date_order not in {"mdy", "dmy"}:
+            raise ValueError("date_order must be either 'mdy' or 'dmy'")
+
         self.your_name = your_name
+        self.date_order = date_order
         self._compiled_patterns = [re.compile(p) for p in self.PATTERNS]
+        self._compiled_system_line_patterns = [
+            re.compile(p) for p in self.SYSTEM_LINE_PATTERNS
+        ]
         self._system_patterns = [re.compile(p, re.IGNORECASE) for p in self.SYSTEM_PATTERNS]
 
-    def _parse_timestamp(self, date_str: str, time_str: str) -> Optional[datetime]:
+    def _date_formats(self, date_str: str) -> list[str]:
+        """Return date formats in the configured order for ambiguous dates."""
+        if "-" in date_str:
+            return ["%Y-%m-%d"]
+        if "." in date_str:
+            return ["%d.%m.%y", "%d.%m.%Y"]
+        if self.date_order == "dmy":
+            return [*self.DMY_DATE_FORMATS, *self.MDY_DATE_FORMATS]
+        return [*self.MDY_DATE_FORMATS, *self.DMY_DATE_FORMATS]
+
+    def _parse_timestamp(self, date_str: str, time_str: str) -> datetime | None:
         """Parse date and time strings into a datetime object."""
         time_str = time_str.strip().upper()
 
-        for date_fmt in self.DATE_FORMATS:
+        for date_fmt in self._date_formats(date_str):
             for time_fmt in self.TIME_FORMATS:
                 try:
                     combined = f"{date_str} {time_str}"
@@ -181,7 +200,7 @@ class WhatsAppParser:
                     continue
 
         # Fallback: try parsing time without AM/PM marker for 24h
-        for date_fmt in self.DATE_FORMATS:
+        for date_fmt in self._date_formats(date_str):
             try:
                 # Remove any trailing AM/PM that didn't match
                 clean_time = re.sub(r'\s*[APap][Mm]$', '', time_str)
@@ -215,7 +234,7 @@ class WhatsAppParser:
         message = re.sub(r'https?://\S+', '[URL]', message)
         return message
 
-    def parse_line(self, line: str, prev_message: Optional[ChatMessage] = None) -> Optional[ChatMessage]:
+    def parse_line(self, line: str, prev_message: ChatMessage | None = None) -> ChatMessage | None:
         """
         Parse a single line of chat.
 
@@ -242,8 +261,13 @@ class WhatsAppParser:
                     continue
 
                 author = author.strip()
-                message = self._clean_message(message)
-                is_system = self._is_system_message(message)
+                if self._is_system_message(author):
+                    message = self._clean_message(f"{author}: {message}")
+                    author = "System"
+                    is_system = True
+                else:
+                    message = self._clean_message(message)
+                    is_system = self._is_system_message(message)
 
                 return ChatMessage(
                     author=author,
@@ -251,6 +275,23 @@ class WhatsAppParser:
                     timestamp=timestamp,
                     is_system=is_system,
                 )
+
+        for pattern in self._compiled_system_line_patterns:
+            match = pattern.match(line)
+            if not match:
+                continue
+
+            date_str, time_str, message = match.groups()
+            timestamp = self._parse_timestamp(date_str, time_str)
+            if timestamp is None:
+                continue
+
+            return ChatMessage(
+                author="System",
+                message=self._clean_message(message),
+                timestamp=timestamp,
+                is_system=True,
+            )
 
         return None
 
@@ -269,9 +310,9 @@ class WhatsAppParser:
         if not filepath.exists():
             raise FileNotFoundError(f"Chat file not found: {filepath}")
 
-        current_message: Optional[ChatMessage] = None
+        current_message: ChatMessage | None = None
 
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 parsed = self.parse_line(line, current_message)
 

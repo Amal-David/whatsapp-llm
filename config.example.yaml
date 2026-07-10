@@ -42,6 +42,12 @@ memory:
   # Number of memories to retrieve
   top_k_retrieval: 5
 
+  # Maximum retrieved context injected into a prompt
+  max_context_chars: 12000
+
+  # Maximum active facts injected into a prompt
+  max_facts: 50
+
 # Fact store configuration
 facts:
   # Path to store facts

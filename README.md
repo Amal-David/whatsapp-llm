@@ -75,6 +75,9 @@ Parse and inspect the chat:
 living-brain parse chat.txt --your-name "Your Name" --output processed
 ```
 
+Slash dates use month/day order by default. For exports that use day/month
+order, pass `--date-order dmy`.
+
 This writes:
 
 - `processed.json` with style metrics.
@@ -87,7 +90,8 @@ living-brain workbench --port 7861
 ```
 
 Open the local URL, upload the `.txt` export, choose a participant, confirm
-consent, and download the generated ZIP.
+consent, and download the generated ZIP. Other participants' messages are
+withheld by default; including them requires a separate permission confirmation.
 
 ## Dataset Workbench
 
@@ -115,7 +119,13 @@ It produces:
 The canonical rows preserve source metadata, context, target replies, privacy
 redactions, quality labels, splits, and synthetic flags. SFT rows use observed
 target replies. DPO rows pair the observed reply with a labeled synthetic
-negative, such as a too-formal variant.
+negative, such as a too-formal variant. Splits are assigned by whole conversation:
+SFT and DPO files contain training rows only, while `eval.jsonl` contains only
+available validation and test rows. Small imports without enough conversation
+groups intentionally produce no held-out rows.
+
+Character-card and persona exports contain aggregate style descriptions, not
+source dialogue, catchphrases, or other participants' display names.
 
 ### Sample Text
 
@@ -234,6 +244,11 @@ living-brain stats
 The orchestrator loads memory stores lazily, so GGUF-only workflows can start
 without ChromaDB until memory features are used.
 
+Conversation memories are stored as overlapping chunks using the configured
+`chunk_size` and `chunk_overlap`. Retrieved memories and facts are escaped,
+bounded by `max_context_chars` and `max_facts`, and presented to the model as
+untrusted historical data rather than instructions.
+
 ## Python API
 
 ```python
@@ -295,6 +310,7 @@ tests/
 - Use the workbench only for your own messages, an organization voice you manage,
   or someone who gave explicit consent.
 - Keep raw WhatsApp exports local.
+- Leave third-party context disabled unless every included participant gave permission.
 - Review every generated dataset before training.
 - Treat synthetic rows as synthetic.
 - Do not train SFT on unreviewed synthetic replies as if they were real messages.
@@ -315,13 +331,25 @@ pip install -e ".[dev]"
 Run the regression tests:
 
 ```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest tests/test_pr_review_regressions.py -q -o addopts=''
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest tests -q -o addopts=''
 ```
 
-Run lint:
+Compile every supported import path:
 
 ```bash
-uvx ruff check tests/test_pr_review_regressions.py \
+python -m compileall -q living_brain tests
+```
+
+CI runs the regression suite, CLI smoke tests, and focused Ruff/mypy checks on
+Python 3.10, 3.11, and 3.12. Generated workbench downloads are kept in a private
+temporary directory and removed when the workbench is cleaned up or exits.
+
+Run the focused lint checks locally:
+
+```bash
+uvx ruff check tests \
+  living_brain/ingest/persona_dataset.py \
+  living_brain/ingest/whatsapp_parser.py \
   living_brain/memory/fact_store.py \
   living_brain/memory/vector_store.py \
   living_brain/inference/orchestrator.py

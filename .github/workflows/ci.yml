@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Compile package
+        run: python -m compileall -q living_brain tests
+      - name: Smoke test CLI
+        run: |
+          python -m living_brain.main --help
+          python -m living_brain.main parse sample_chat.txt --your-name Alex --date-order mdy --output /tmp/living-brain-smoke
+      - name: Run tests
+        run: pytest tests -q -o addopts=''
+      - name: Run focused lint
+        run: >-
+          ruff check tests
+          living_brain/core/config.py
+          living_brain/inference/chat.py
+          living_brain/inference/dataset_ui.py
+          living_brain/inference/orchestrator.py
+          living_brain/ingest/persona_dataset.py
+          living_brain/ingest/style_analyzer.py
+          living_brain/ingest/watcher.py
+          living_brain/ingest/whatsapp_parser.py
+          living_brain/main.py
+          living_brain/memory/fact_store.py
+          living_brain/memory/retriever.py
+          living_brain/memory/vector_store.py
+      - name: Run focused type checks
+        run: >-
+          mypy
+          living_brain/core/config.py
+          living_brain/inference/chat.py
+          living_brain/inference/dataset_ui.py
+          living_brain/inference/orchestrator.py
+          living_brain/ingest/persona_dataset.py
+          living_brain/ingest/style_analyzer.py
+          living_brain/ingest/watcher.py
+          living_brain/ingest/whatsapp_parser.py
+          living_brain/main.py
+          living_brain/memory/fact_store.py
+          living_brain/memory/retriever.py
+          living_brain/memory/vector_store.py

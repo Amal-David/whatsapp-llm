@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 try:
     import chromadb
@@ -111,11 +112,33 @@ class VectorStore:
         unique_str = f"{content}_{timestamp.isoformat()}"
         return hashlib.sha256(unique_str.encode()).hexdigest()[:16]
 
+    @staticmethod
+    def chunk_text(content: str, chunk_size: int, chunk_overlap: int = 0) -> list[str]:
+        """Split text into overlapping word chunks."""
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if chunk_overlap < 0 or chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
+
+        words = content.split()
+        if not words:
+            return []
+
+        step = chunk_size - chunk_overlap
+        chunks = []
+        start = 0
+        while start < len(words):
+            chunks.append(" ".join(words[start : start + chunk_size]))
+            if start + chunk_size >= len(words):
+                break
+            start += step
+        return chunks
+
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a list of texts."""
         model = self._get_embedding_model()
         embeddings = model.encode(texts, convert_to_numpy=True)
-        return embeddings.tolist()
+        return cast(list[list[float]], embeddings.tolist())
 
     def add(
         self,
@@ -220,6 +243,32 @@ class VectorStore:
 
         return ids
 
+    def add_chunked(
+        self,
+        content: str,
+        timestamp: datetime | None = None,
+        metadata: dict | None = None,
+        chunk_size: int = 512,
+        chunk_overlap: int = 50,
+    ) -> list[str]:
+        """Chunk content and add each chunk with stable source metadata."""
+        timestamp = timestamp or datetime.now()
+        metadata = metadata or {}
+        chunks = self.chunk_text(content, chunk_size, chunk_overlap)
+        entries = [
+            (
+                chunk,
+                timestamp,
+                {
+                    **metadata,
+                    "chunk_index": index,
+                    "chunk_count": len(chunks),
+                },
+            )
+            for index, chunk in enumerate(chunks)
+        ]
+        return self.add_batch(entries)
+
     def search(
         self,
         query: str,
@@ -320,7 +369,7 @@ class VectorStore:
 
     def count(self) -> int:
         """Get the number of memories in the store."""
-        return self._collection.count()
+        return int(self._collection.count())
 
     def export(self, filepath: str | Path) -> int:
         """Export all memories to a JSON file."""

@@ -4,8 +4,10 @@ Fact store for semantic memory (knowledge graph lite).
 
 import json
 import logging
+import os
 import re
-from dataclasses import dataclass, field
+import tempfile
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -102,23 +104,40 @@ class FactStore:
     def _load(self) -> None:
         """Load facts from disk."""
         if self.facts_path.exists():
-            try:
-                with open(self.facts_path) as f:
-                    data = json.load(f)
-                for fact_data in data:
-                    fact = Fact.from_dict(fact_data)
-                    self._facts[fact.id] = fact
-                logger.info(f"Loaded {len(self._facts)} facts")
-            except Exception as e:
-                logger.error(f"Failed to load facts: {e}")
+            with open(self.facts_path) as f:
+                data = json.load(f)
+            if not isinstance(data, list):
+                raise ValueError("Fact store must contain a JSON array")
 
-    def _save(self) -> None:
-        """Save facts to disk."""
+            loaded = {}
+            for fact_data in data:
+                fact = Fact.from_dict(fact_data)
+                loaded[fact.id] = fact
+            self._facts = loaded
+            logger.info(f"Loaded {len(self._facts)} facts")
+
+    def _save(self, facts: dict[str, Fact] | None = None) -> None:
+        """Atomically save facts to disk."""
+        facts = self._facts if facts is None else facts
+        temp_path: Path | None = None
         try:
-            with open(self.facts_path, 'w') as f:
-                json.dump([f.to_dict() for f in self._facts.values()], f, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save facts: {e}")
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.facts_path.parent,
+                prefix=f".{self.facts_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                temp_path = Path(temp_file.name)
+                json.dump([fact.to_dict() for fact in facts.values()], temp_file, indent=2)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+            os.replace(temp_path, self.facts_path)
+        except Exception:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+            raise
 
     def add(
         self,
@@ -151,16 +170,20 @@ class FactStore:
             source=source,
         )
 
+        updated_facts = {
+            key: replace(existing) for key, existing in self._facts.items()
+        }
+
         # Check for existing fact with same subject+predicate
         existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(" ", "_")
-        for key, existing in list(self._facts.items()):
+        for key, existing in list(updated_facts.items()):
             if key.startswith(existing_key + ":") and key != fact.id:
-                # Mark old fact as superseded
-                existing.superseded_by = fact.id
+                updated_facts[key] = replace(existing, superseded_by=fact.id)
                 logger.info(f"Fact superseded: {existing.to_natural()} -> {fact.to_natural()}")
 
-        self._facts[fact.id] = fact
-        self._save()
+        updated_facts[fact.id] = fact
+        self._save(updated_facts)
+        self._facts = updated_facts
         return fact
 
     def add_batch(self, facts: list[tuple[str, str, str]]) -> list[Fact]:
@@ -327,15 +350,17 @@ class FactStore:
     def delete(self, fact_id: str) -> bool:
         """Delete a fact."""
         if fact_id in self._facts:
-            del self._facts[fact_id]
-            self._save()
+            updated_facts = dict(self._facts)
+            del updated_facts[fact_id]
+            self._save(updated_facts)
+            self._facts = updated_facts
             return True
         return False
 
     def clear(self) -> None:
         """Clear all facts."""
-        self._facts.clear()
-        self._save()
+        self._save({})
+        self._facts = {}
 
     def count(self) -> int:
         """Get number of active facts."""
@@ -352,11 +377,13 @@ class FactStore:
         with open(filepath) as f:
             data = json.load(f)
 
+        updated_facts = dict(self._facts)
         count = 0
         for fact_data in data:
             fact = Fact.from_dict(fact_data)
-            self._facts[fact.id] = fact
+            updated_facts[fact.id] = fact
             count += 1
 
-        self._save()
+        self._save(updated_facts)
+        self._facts = updated_facts
         return count

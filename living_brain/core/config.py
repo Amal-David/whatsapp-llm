@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+
 import yaml
 
 
@@ -27,6 +27,8 @@ class MemoryConfig:
     chunk_size: int = 512
     chunk_overlap: int = 50
     top_k_retrieval: int = 5
+    max_context_chars: int = 12000
+    max_facts: int = 50
 
 
 @dataclass
@@ -60,7 +62,7 @@ class InferenceConfig:
     max_new_tokens: int = 512
     repetition_penalty: float = 1.1
     use_gguf: bool = False
-    gguf_path: Optional[str] = None
+    gguf_path: str | None = None
 
 
 @dataclass
@@ -81,10 +83,10 @@ class Config:
         Path(self.training.output_dir).mkdir(parents=True, exist_ok=True)
 
 
-def load_config(config_path: Optional[str] = None) -> Config:
+def load_config(config_path: str | None = None) -> Config:
     """Load configuration from YAML file or return defaults."""
     if config_path and os.path.exists(config_path):
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             data = yaml.safe_load(f)
 
         # Build config from nested dict
@@ -127,6 +129,8 @@ def save_config(config: Config, config_path: str) -> None:
             'chunk_size': config.memory.chunk_size,
             'chunk_overlap': config.memory.chunk_overlap,
             'top_k_retrieval': config.memory.top_k_retrieval,
+            'max_context_chars': config.memory.max_context_chars,
+            'max_facts': config.memory.max_facts,
         },
         'facts': {
             'facts_path': config.facts.facts_path,

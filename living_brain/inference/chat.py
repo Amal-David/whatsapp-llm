@@ -3,11 +3,9 @@ Gradio-based chat interface for Living Brain.
 """
 
 import logging
-from pathlib import Path
-from typing import Optional
 
-from .orchestrator import Orchestrator
 from ..core.config import Config
+from .orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +17,8 @@ class ChatInterface:
 
     def __init__(
         self,
-        orchestrator: Optional[Orchestrator] = None,
-        config: Optional[Config] = None,
+        orchestrator: Orchestrator | None = None,
+        config: Config | None = None,
         title: str = "Living Brain Chat",
     ):
         """
@@ -31,12 +29,9 @@ class ChatInterface:
             config: Configuration (used if orchestrator not provided)
             title: Title for the chat interface
         """
-        self.orchestrator = orchestrator
         self.config = config or Config()
         self.title = title
-
-        if self.orchestrator is None:
-            self.orchestrator = Orchestrator(config=self.config)
+        self.orchestrator = orchestrator or Orchestrator(config=self.config)
 
     def _respond(
         self,
@@ -89,11 +84,10 @@ class ChatInterface:
         if not all([subject.strip(), predicate.strip(), obj.strip()]):
             return "Please fill in all fields"
 
-        self.orchestrator.fact_store.add(
+        self.orchestrator.add_fact(
             subject=subject.strip(),
             predicate=predicate.strip(),
             obj=obj.strip(),
-            source="manual",
         )
         return f"Added: {subject} {predicate} {obj}"
 
@@ -239,10 +233,10 @@ class ChatInterface:
 
 
 def launch_chat(
-    config_path: Optional[str] = None,
-    adapter_name: Optional[str] = None,
+    config_path: str | None = None,
+    adapter_name: str | None = None,
     use_gguf: bool = False,
-    gguf_path: Optional[str] = None,
+    gguf_path: str | None = None,
     share: bool = False,
     port: int = 7860,
 ):
