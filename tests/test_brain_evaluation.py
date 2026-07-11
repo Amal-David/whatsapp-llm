@@ -278,6 +278,31 @@ def test_mapping_output_and_explicit_abstention_are_supported():
     assert report.case_results[0].score == 1.0
 
 
+def test_axis_results_match_the_lab_required_axes_exactly():
+    result = _result()
+    report = EvaluationLab(required_axes=(EvaluationAxis.PRIVACY,)).evaluate(
+        [
+            EvaluationCase(
+                case_id="extra-behavior-case",
+                axis=EvaluationAxis.BEHAVIORAL,
+                result=result,
+                output=OutputExpectation(accepted_responses=(RESPONSE,)),
+            ),
+            EvaluationCase(
+                case_id="required-privacy-case",
+                axis=EvaluationAxis.PRIVACY,
+                result=result,
+                privacy=PrivacyExpectation(),
+            ),
+        ]
+    )
+
+    assert report.required_axes == (EvaluationAxis.PRIVACY,)
+    assert tuple(axis.axis for axis in report.axis_results) == (
+        EvaluationAxis.PRIVACY,
+    )
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

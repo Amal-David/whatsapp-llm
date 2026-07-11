@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import tempfile
+import threading
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
@@ -98,6 +99,7 @@ class FactStore:
         self.facts_path = Path(facts_path)
         self.facts_path.parent.mkdir(parents=True, exist_ok=True)
 
+        self._lock = threading.RLock()
         self._facts: dict[str, Fact] = {}
         self._load()
 
@@ -169,29 +171,50 @@ class FactStore:
             confidence=confidence,
             source=source,
         )
-
-        updated_facts = {
-            key: replace(existing) for key, existing in self._facts.items()
-        }
-
-        # Check for existing fact with same subject+predicate
-        existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(" ", "_")
-        for key, existing in list(updated_facts.items()):
-            if key.startswith(existing_key + ":") and key != fact.id:
-                updated_facts[key] = replace(existing, superseded_by=fact.id)
-                logger.info(f"Fact superseded: {existing.to_natural()} -> {fact.to_natural()}")
-
-        updated_facts[fact.id] = fact
-        self._save(updated_facts)
-        self._facts = updated_facts
+        self._add_facts([fact])
         return fact
+
+    def _add_facts(self, facts: list[Fact]) -> None:
+        """Apply one atomic supersession-aware update for a fact batch."""
+        if not facts:
+            return
+        with self._lock:
+            updated_facts = {
+                key: replace(existing) for key, existing in self._facts.items()
+            }
+
+            for fact in facts:
+                existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(
+                    " ", "_"
+                )
+                for key, existing in list(updated_facts.items()):
+                    if key.startswith(existing_key + ":") and key != fact.id:
+                        updated_facts[key] = replace(
+                            existing,
+                            superseded_by=fact.id,
+                        )
+                        logger.info(
+                            "Fact superseded: %s -> %s",
+                            existing.to_natural(),
+                            fact.to_natural(),
+                        )
+                updated_facts[fact.id] = fact
+
+            self._save(updated_facts)
+            self._facts = updated_facts
 
     def add_batch(self, facts: list[tuple[str, str, str]]) -> list[Fact]:
         """Add multiple facts at once."""
-        results = []
-        for subject, predicate, obj in facts:
-            fact = self.add(subject, predicate, obj)
-            results.append(fact)
+        results = [
+            Fact(
+                subject=subject.strip(),
+                predicate=predicate.strip(),
+                object=obj.strip(),
+                source="manual",
+            )
+            for subject, predicate, obj in facts
+        ]
+        self._add_facts(results)
         return results
 
     def get(self, fact_id: str) -> Fact | None:
@@ -315,14 +338,7 @@ class FactStore:
         facts = self.extract_facts(text)
 
         if auto_add:
-            for fact in facts:
-                self.add(
-                    fact.subject,
-                    fact.predicate,
-                    fact.object,
-                    confidence=fact.confidence,
-                    source=fact.source,
-                )
+            self._add_facts(facts)
 
         return facts
 
@@ -349,18 +365,20 @@ class FactStore:
 
     def delete(self, fact_id: str) -> bool:
         """Delete a fact."""
-        if fact_id in self._facts:
+        with self._lock:
+            if fact_id not in self._facts:
+                return False
             updated_facts = dict(self._facts)
             del updated_facts[fact_id]
             self._save(updated_facts)
             self._facts = updated_facts
             return True
-        return False
 
     def clear(self) -> None:
         """Clear all facts."""
-        self._save({})
-        self._facts = {}
+        with self._lock:
+            self._save({})
+            self._facts = {}
 
     def count(self) -> int:
         """Get number of active facts."""
@@ -377,13 +395,14 @@ class FactStore:
         with open(filepath) as f:
             data = json.load(f)
 
-        updated_facts = dict(self._facts)
-        count = 0
-        for fact_data in data:
-            fact = Fact.from_dict(fact_data)
-            updated_facts[fact.id] = fact
-            count += 1
+        with self._lock:
+            updated_facts = dict(self._facts)
+            count = 0
+            for fact_data in data:
+                fact = Fact.from_dict(fact_data)
+                updated_facts[fact.id] = fact
+                count += 1
 
-        self._save(updated_facts)
-        self._facts = updated_facts
-        return count
+            self._save(updated_facts)
+            self._facts = updated_facts
+            return count

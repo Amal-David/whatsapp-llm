@@ -640,11 +640,6 @@ class SimulationEngine:
         for item_ids in groups.values():
             if len(item_ids) > 1:
                 conflicts.update(item_ids)
-        for item in selected:
-            if any(
-                linked_id in selected_ids for linked_id in item.evidence_ids
-            ):
-                conflicts.add(item.item_id)
         return RetrievedContext(
             episodes=episodes,
             self_knowledge=self_knowledge,

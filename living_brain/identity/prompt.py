@@ -26,8 +26,11 @@ class DigitalSelfPromptBuilder:
         visible_claims = [
             claim
             for claim in self.profile.current_claims(as_of)
-            if claim.relationship_id is None
-            or claim.relationship_id == relationship_id
+            if (
+                claim.relationship_id is None
+                or claim.relationship_id == relationship_id
+            )
+            and (relationship_id is None or claim.sensitivity == "public")
         ]
         conflict_ids, conflicts = self._find_conflicts(visible_claims)
         confirmed = [

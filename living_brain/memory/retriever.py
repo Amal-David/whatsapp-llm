@@ -5,12 +5,19 @@ Memory retriever combining vector store and fact store for RAG.
 import html
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .fact_store import Fact, FactStore
 from .vector_store import MemoryEntry, VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+def _fact_recency(fact: Fact) -> datetime:
+    timestamp = fact.timestamp
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc)
 
 
 @dataclass
@@ -83,7 +90,7 @@ class MemoryRetriever:
             RetrievalResult with memories, facts, and formatted context
         """
         memories = []
-        facts = []
+        facts: list[Fact] = []
 
         # Retrieve episodic memories
         if include_memories:
@@ -108,17 +115,29 @@ class MemoryRetriever:
 
         # Retrieve facts
         if include_facts:
-            # Get all active facts (knowledge base)
-            facts = self.fact_store.get_all_active()[: self.max_facts]
-
-            # Also search for query-specific facts
+            recent_facts = sorted(
+                self.fact_store.get_all_active(),
+                key=_fact_recency,
+                reverse=True,
+            )
+            candidates = recent_facts
             if fact_query:
-                query_facts = self.fact_store.search(fact_query)
-                # Merge without duplicates
-                fact_ids = {f.id for f in facts}
-                for f in query_facts:
-                    if f.id not in fact_ids:
-                        facts.append(f)
+                query_facts = sorted(
+                    self.fact_store.search(fact_query),
+                    key=_fact_recency,
+                    reverse=True,
+                )
+                candidates = [*query_facts, *recent_facts]
+
+            facts = []
+            fact_ids = set()
+            for fact in candidates:
+                if len(facts) >= self.max_facts:
+                    break
+                if fact.id in fact_ids:
+                    continue
+                facts.append(fact)
+                fact_ids.add(fact.id)
 
             logger.debug(f"Retrieved {len(facts)} facts")
 

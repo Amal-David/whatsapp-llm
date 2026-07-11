@@ -685,7 +685,8 @@ def cmd_brain(args):
 def _aware_datetime(value):
     """Parse one ISO timestamp for deterministic brain operations."""
     try:
-        parsed = datetime.fromisoformat(value)
+        normalized = f"{value[:-1]}+00:00" if value.endswith("Z") else value
+        parsed = datetime.fromisoformat(normalized)
     except ValueError as error:
         raise argparse.ArgumentTypeError("timestamp must be ISO 8601") from error
     if parsed.tzinfo is None or parsed.utcoffset() is None:

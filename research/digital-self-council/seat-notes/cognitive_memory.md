@@ -266,9 +266,11 @@ biological memory analogy is sufficient for representing a particular person.
 The evidence supports the following architecture as a testable engineering
 hypothesis, not a claim that software implements human memory:
 
-1. **Immutable episode ledger.** Store event time, participants or entities,
-   content references, context, source, confidence, and later corrections. Do not
-   overwrite the source episode during abstraction or reconsolidation
+1. **Source-linked episodic record under retention controls.** Store event time,
+   participants or entities, content references, context, source, confidence,
+   and later corrections. Do not overwrite a retained source episode during
+   abstraction or reconsolidation; support authorized deletion or tombstoning
+   after retention expiry with an auditable change record
    (`paper:cognitive-memory-hupbach-et-al-2007`).
 
 2. **Versioned semantic store.** Maintain generalized claims separately, each

@@ -2,6 +2,8 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from living_brain.identity.builder import DigitalSelfBuilder
 from living_brain.identity.models import ClaimStatus, ProvenanceType
 from living_brain.identity.sources import NormalizedMessage
@@ -126,6 +128,65 @@ def test_builder_combines_multiple_relationships_without_flattening_them():
     assert set(result.profile.communication_style["relationships"]) == {
         "relationship:friend",
         "relationship:work",
+    }
+
+
+def test_interview_only_build_requires_an_explicit_completion_time():
+    interview = _interview()
+    interview.pop("completed_at")
+
+    with pytest.raises(ValueError, match="completed_at"):
+        DigitalSelfBuilder().build([], owner_name="Amal", interview=interview)
+
+
+def test_interview_questions_reject_unsupported_supersedes_references():
+    interview = _interview()
+    interview["sections"][0]["questions"][0]["supersedes"] = "claim:not-in-profile"
+
+    with pytest.raises(ValueError, match="interview question.*supersedes"):
+        DigitalSelfBuilder().build(
+            _multi_chat_messages(),
+            owner_name="Amal",
+            interview=interview,
+        )
+
+
+def test_relationship_profiles_require_training_owner_evidence():
+    anchor = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    messages = [
+        _message(
+            "train",
+            "chat:train",
+            "relationship:train",
+            anchor,
+            "Train evidence.",
+            from_owner=True,
+        ),
+        _message(
+            "validation",
+            "chat:held-out",
+            "relationship:held-out",
+            anchor + timedelta(days=32),
+            "Validation evidence.",
+            from_owner=True,
+        ),
+        _message(
+            "test",
+            "chat:held-out",
+            "relationship:held-out",
+            anchor + timedelta(days=63),
+            "Test evidence.",
+            from_owner=True,
+        ),
+    ]
+
+    result = DigitalSelfBuilder().build(messages, owner_name="Amal")
+
+    assert {profile.id for profile in result.profile.relationships} == {
+        "relationship:train"
+    }
+    assert set(result.profile.communication_style["relationships"]) == {
+        "relationship:train"
     }
 
 

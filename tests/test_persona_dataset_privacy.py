@@ -96,3 +96,8 @@ def test_conversation_splits_and_derived_artifacts_are_isolated(tmp_path):
     assert result.style_capsule["metrics"]["message_count"] < result.summary[
         "target_message_count"
     ]
+    all_timestamps = [row["source"]["timestamp"] for row in result.canonical_examples]
+    assert result.canonical_character["provenance"]["date_range"] == {
+        "from": min(all_timestamps),
+        "to": max(all_timestamps),
+    }

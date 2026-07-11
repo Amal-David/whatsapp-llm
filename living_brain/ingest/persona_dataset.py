@@ -190,7 +190,7 @@ class PersonaDatasetBuilder:
             participants=participants,
             style_metrics=style_metrics,
             feature_summary=feature_summary,
-            canonical_examples=training_examples,
+            canonical_examples=canonical_examples,
             owner_type=owner_type,
         )
         character_card_v2 = self._character_card_v2(canonical_character)

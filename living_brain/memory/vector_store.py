@@ -157,7 +157,7 @@ class VectorStore:
         Returns:
             The ID of the added entry
         """
-        timestamp = timestamp or datetime.now()
+        timestamp = timestamp or datetime.now(timezone.utc)
         metadata = metadata or {}
 
         entry_id = self._generate_id(content, timestamp)
@@ -252,7 +252,7 @@ class VectorStore:
         chunk_overlap: int = 50,
     ) -> list[str]:
         """Chunk content and add each chunk with stable source metadata."""
-        timestamp = timestamp or datetime.now()
+        timestamp = timestamp or datetime.now(timezone.utc)
         metadata = metadata or {}
         chunks = self.chunk_text(content, chunk_size, chunk_overlap)
         entries = [
@@ -415,7 +415,10 @@ class VectorStore:
         count = 0
         for entry in entries:
             timestamp = datetime.fromisoformat(
-                entry["metadata"].get("timestamp", datetime.now().isoformat())
+                entry["metadata"].get(
+                    "timestamp",
+                    datetime.now(timezone.utc).isoformat(),
+                )
             )
             self.add(
                 content=entry["content"],

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from living_brain.core.config import Config, FactConfig, MemoryConfig, TrainingConfig
 from living_brain.inference.orchestrator import Orchestrator
@@ -87,6 +87,41 @@ def test_vector_add_batch_pairs_new_ids_with_new_documents_when_duplicates_appea
     assert ids == [duplicate_id, *expected_new_ids]
     assert fake_collection.added["ids"] == expected_new_ids
     assert fake_collection.added["documents"] == ["new one", "new two"]
+
+
+def test_vector_store_default_write_timestamps_are_utc_aware():
+    store = object.__new__(VectorStore)
+
+    class FakeCollection:
+        def __init__(self):
+            self.added = None
+
+        def get(self, ids):
+            return {"ids": []}
+
+        def add(self, ids, embeddings, documents, metadatas):
+            self.added = metadatas
+
+    collection = FakeCollection()
+    store._collection = collection
+    store.embed = lambda contents: [[0.0] for _ in contents]
+
+    store.add("default timestamp")
+
+    added_at = datetime.fromisoformat(collection.added[0]["timestamp"])
+    assert added_at.utcoffset() == timezone.utc.utcoffset(added_at)
+
+    captured_entries = []
+
+    def capture_batch(entries):
+        captured_entries.extend(entries)
+        return ["chunk"] * len(entries)
+
+    store.add_batch = capture_batch
+    store.add_chunked("one two three", chunk_size=2, chunk_overlap=0)
+
+    assert captured_entries
+    assert all(timestamp.utcoffset() == timezone.utc.utcoffset(timestamp) for _, timestamp, _ in captured_entries)
 
 
 def test_orchestrator_defers_memory_store_initialization(tmp_path):

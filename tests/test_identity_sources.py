@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -286,9 +287,43 @@ def test_json_source_uses_the_same_normalized_contract(tmp_path):
     assert isinstance(messages[0], NormalizedMessage)
     assert messages[0].source == "json"
     assert messages[0].from_owner is True
-    assert messages[0].content_hash == hashlib.sha256(
-        b"I value useful evidence."
+    assert messages[0].content_hash == hmac.new(
+        KEY,
+        b"content:I value useful evidence.",
+        hashlib.sha256,
     ).hexdigest()
+
+
+def test_json_chat_listing_normalizes_mixed_timestamps_to_utc(tmp_path):
+    source_path = tmp_path / "messages.json"
+    source_path.write_text(
+        json.dumps(
+            {
+                "chats": [{"source_chat_id": "friend", "kind": "dm"}],
+                "messages": [
+                    {
+                        "source_chat_id": "friend",
+                        "timestamp": "2026-01-01T12:00:00",
+                    },
+                    {
+                        "source_chat_id": "friend",
+                        "timestamp": "2026-01-01T13:00:00+00:00",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    chats = JsonMessageSource(source_path, pseudonym_key=KEY).list_chats()
+
+    assert chats[0].last_message_at == datetime(
+        2026,
+        1,
+        1,
+        13,
+        tzinfo=timezone.utc,
+    )
 
 
 def test_all_chats_is_an_explicit_multi_chat_opt_in(tmp_path):

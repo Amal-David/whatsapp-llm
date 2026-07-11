@@ -8,7 +8,7 @@ import pytest
 from living_brain.brain.demo import run_guided_demo
 from living_brain.brain.models import BrainLayer, DigitalBrain
 from living_brain.identity.models import DigitalSelfProfile
-from living_brain.main import main
+from living_brain.main import _aware_datetime, main
 
 NOW = datetime(2026, 7, 11, 12, 0, tzinfo=timezone.utc)
 EXPECTED_AXES = {
@@ -21,6 +21,10 @@ EXPECTED_AXES = {
     "privacy",
     "owner_judgment",
 }
+
+
+def test_cli_timestamp_parser_accepts_utc_z_designator():
+    assert _aware_datetime("2026-07-11T12:00:00Z") == NOW
 
 
 def test_guided_demo_exercises_the_complete_local_workflow(tmp_path):

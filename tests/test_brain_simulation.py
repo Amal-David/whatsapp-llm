@@ -35,6 +35,7 @@ def _item(
     sensitivity=Sensitivity.PRIVATE,
     ownership=Ownership.OWNER,
     contradiction_ids=(),
+    evidence_source_id=None,
 ):
     return StateItem.create(
         layer=layer,
@@ -53,7 +54,10 @@ def _item(
         ownership=ownership,
         provenance=(
             ProvenanceRef(
-                source_id=f"evidence:{kind}:{relationship_id or 'global'}",
+                source_id=(
+                    evidence_source_id
+                    or f"evidence:{kind}:{relationship_id or 'global'}"
+                ),
                 source_type="fixture",
                 relation=ProvenanceRelation.SUPPORTS,
                 observed_at=NOW - timedelta(days=1),
@@ -344,6 +348,27 @@ def test_conflicts_are_exposed_and_live_authority_candidates_are_rejected():
     assert "live_authority_candidate_rejected" in result.abstention_reasons
     assert result.selected_response == "Nice. Keep me posted."
     assert all(not candidate.requires_live_authority for candidate in result.alternatives)
+
+
+def test_supporting_evidence_links_do_not_create_false_conflicts():
+    supported = _item(
+        BrainLayer.SEMANTIC,
+        "owner.fact",
+        "The owner has a project review tomorrow.",
+    )
+    value = _item(
+        BrainLayer.VALUES_GOALS,
+        "value",
+        "The owner values preparation.",
+        evidence_source_id=supported.id,
+    )
+
+    result = SimulationEngine(
+        _CapturingProvider(),
+        minimum_grounded_items=2,
+    ).simulate(_brain(supported, value), _situation(relationship_id=None))
+
+    assert result.conflict_item_ids == ()
 
 
 class _CompletionProvider:

@@ -181,7 +181,11 @@ class BaseMessageSource:
             from_owner=from_owner,
             text=normalized_text,
             message_type=message_type,
-            content_hash=hashlib.sha256((normalized_text or "").encode()).hexdigest(),
+            content_hash=hmac.new(
+                self._pseudonym_key,
+                f"content:{normalized_text or ''}".encode(),
+                hashlib.sha256,
+            ).hexdigest(),
             reply_to_id=reply_to_id,
             metadata=metadata or {},
         )
@@ -218,7 +222,7 @@ class JsonMessageSource(BaseMessageSource):
                 if message["source_chat_id"] == source_chat_id
             ]
             timestamps = [
-                datetime.fromisoformat(message["timestamp"])
+                ensure_utc(datetime.fromisoformat(message["timestamp"]))
                 for message in chat_messages
             ]
             descriptors.append(

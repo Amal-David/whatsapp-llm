@@ -265,6 +265,7 @@ class EvaluationSuite:
 
     def save_summary(self, path: str | Path) -> None:
         """Persist aggregate coverage without prompt or response text."""
+        self.validate()
         content = json.dumps(
             self.summary(),
             ensure_ascii=False,

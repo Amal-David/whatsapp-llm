@@ -497,14 +497,22 @@ Run the focused lint checks locally:
 ```bash
 uvx ruff check tests \
   living_brain/brain \
+  living_brain/core/config.py \
   living_brain/identity \
-  living_brain/research \
-  living_brain/main.py \
+  living_brain/inference/chat.py \
+  living_brain/inference/dataset_ui.py \
+  living_brain/inference/orchestrator.py \
   living_brain/ingest/persona_dataset.py \
+  living_brain/ingest/sample_recommender.py \
+  living_brain/ingest/style_analyzer.py \
+  living_brain/ingest/watcher.py \
   living_brain/ingest/whatsapp_parser.py \
+  living_brain/main.py \
   living_brain/memory/fact_store.py \
+  living_brain/memory/retriever.py \
   living_brain/memory/vector_store.py \
-  living_brain/inference/orchestrator.py
+  living_brain/research \
+  living_brain/style/trainer.py
 ```
 
 ## License

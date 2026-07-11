@@ -2,6 +2,8 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from living_brain.identity.builder import DigitalSelfBuilder
 from living_brain.identity.evaluation import (
     DEFAULT_CONFIGURATIONS,
@@ -194,6 +196,17 @@ def test_automatic_summary_never_contains_raw_dialogue():
     assert "SECRET THIRD PARTY PROMPT" not in summary_json
     assert "owner reply" not in summary_json
     assert "All private details" not in summary_json
+
+
+def test_save_summary_validates_the_private_suite_before_writing(tmp_path):
+    suite, _build_result = _suite()
+    suite.rows.append(suite.rows[0])
+    output_path = tmp_path / "summary.json"
+
+    with pytest.raises(ValueError, match="duplicate evaluation row id"):
+        suite.save_summary(output_path)
+
+    assert not output_path.exists()
 
 
 def test_adding_adapter_configuration_does_not_change_evaluation_row_identity():

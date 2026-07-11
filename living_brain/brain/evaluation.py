@@ -486,8 +486,7 @@ class EvaluationLab:
         )
         axis_results = tuple(
             self._axis_result(axis, case_results)
-            for axis in REQUIRED_AXES
-            if axis in present_axes
+            for axis in self.required_axes
         )
         return EvaluationReport(
             required_axes=self.required_axes,

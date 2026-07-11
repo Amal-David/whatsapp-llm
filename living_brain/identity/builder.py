@@ -106,6 +106,8 @@ class DigitalSelfBuilder:
         interview_completed_at = _parse_datetime(
             interview.get("completed_at") if interview else None
         )
+        if interview and not ordered_messages and interview_completed_at is None:
+            raise ValueError("interview-only builds require completed_at")
         timestamps = [message.timestamp for message in ordered_messages]
         if interview_completed_at:
             timestamps.append(interview_completed_at)
@@ -286,6 +288,10 @@ class DigitalSelfBuilder:
             question_id = question.get("id")
             if not question_id:
                 raise ValueError("answered interview questions require an id")
+            if question.get("supersedes"):
+                raise ValueError(
+                    f"interview question {question_id} uses unsupported supersedes"
+                )
             evidence = EvidenceRecord.create(
                 source_type="owner_interview",
                 source_record_id=f"interview:{question_id}",
@@ -387,9 +393,9 @@ class DigitalSelfBuilder:
         global_metrics: StyleMetrics,
     ) -> tuple[list[RelationshipProfile], dict[str, Any]]:
         relationship_ids = sorted({message.relationship_id for message in all_messages})
-        profiles = []
-        styles = {}
-        for index, relationship_id in enumerate(relationship_ids, start=1):
+        profiles: list[RelationshipProfile] = []
+        styles: dict[str, Any] = {}
+        for relationship_id in relationship_ids:
             train_owner = [
                 message
                 for message in train_messages
@@ -397,6 +403,8 @@ class DigitalSelfBuilder:
                 and message.text
                 and message.relationship_id == relationship_id
             ]
+            if not train_owner:
+                continue
             all_owner = [
                 message
                 for message in all_messages
@@ -411,7 +419,7 @@ class DigitalSelfBuilder:
             profiles.append(
                 RelationshipProfile(
                     id=relationship_id,
-                    label=f"relationship {index}",
+                    label=f"relationship {len(profiles) + 1}",
                     evidence_ids=evidence_ids,
                     style_delta=delta,
                     metadata={

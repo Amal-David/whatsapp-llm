@@ -28,6 +28,7 @@ def _claim(
     valid_to=None,
     supersedes=None,
     relationship_id=None,
+    sensitivity="public",
 ):
     return IdentityClaim.create(
         dimension=dimension,
@@ -40,6 +41,7 @@ def _claim(
         valid_to=valid_to,
         supersedes=supersedes,
         relationship_id=relationship_id,
+        sensitivity=sensitivity,
     )
 
 
@@ -145,6 +147,32 @@ def test_prompt_excludes_expired_and_superseded_claims_but_profile_keeps_them():
     assert "Prefers Kochi" in prompt
     assert "Preferred Bengaluru" not in prompt
     assert any(claim.statement == "Preferred Bengaluru." for claim in profile.claims)
+
+
+def test_relationship_scoped_prompt_excludes_private_claims():
+    profile = DigitalSelfProfile(
+        profile_id="digital-self:amal",
+        owner_id="owner:amal",
+        owner_name="Amal",
+        claims=[
+            _claim("preferences.drink", "Likes tea."),
+            _claim(
+                "health.private",
+                "PRIVATE OWNER HEALTH NOTE",
+                sensitivity="private",
+            ),
+        ],
+    )
+
+    relationship_prompt = DigitalSelfPromptBuilder(profile).render(
+        as_of=_at(5),
+        relationship_id="relationship:friend",
+    )
+    private_prompt = DigitalSelfPromptBuilder(profile).render(as_of=_at(5))
+
+    assert "Likes tea" in relationship_prompt
+    assert "PRIVATE OWNER HEALTH NOTE" not in relationship_prompt
+    assert "PRIVATE OWNER HEALTH NOTE" in private_prompt
 
 
 def test_prompt_discloses_simulation_and_denies_live_authority():

@@ -119,10 +119,16 @@ class ExportWatcher:
         self._memories_added = 0
         self._facts_extracted = 0
 
-    def _process_file(self, filepath: Path) -> None:
+    def _process_file(
+        self,
+        filepath: Path,
+        *,
+        source_path: Path | None = None,
+    ) -> None:
         """Process a new WhatsApp export file."""
         from .whatsapp_parser import WhatsAppParser
 
+        source_path = source_path or filepath
         logger.info(f"Processing: {filepath}")
 
         # Handle zip files
@@ -130,7 +136,11 @@ class ExportWatcher:
             extracted_path = self._extract_zip(filepath)
             if extracted_path is None:
                 return
-            filepath = extracted_path
+            try:
+                self._process_file(extracted_path, source_path=source_path)
+            finally:
+                extracted_path.unlink(missing_ok=True)
+            return
 
         # Parse the file
         parser = WhatsAppParser(your_name=self.your_name)
@@ -148,7 +158,7 @@ class ExportWatcher:
             for conv in conversations:
                 conv_text = conv.to_text()
                 metadata = {
-                    "source_file": str(filepath),
+                    "source_file": str(source_path),
                     "participants": ",".join(set(m.author for m in conv.messages)),
                     "message_count": len(conv.messages),
                 }
@@ -177,6 +187,8 @@ class ExportWatcher:
 
     def _extract_zip(self, zip_path: Path) -> Path | None:
         """Extract a zip file and return the txt file path."""
+        import shutil
+        import tempfile
         import zipfile
 
         with zipfile.ZipFile(zip_path) as zf:
@@ -189,11 +201,22 @@ class ExportWatcher:
             if member_path.is_absolute() or ".." in member_path.parts:
                 raise ValueError(f"Unsafe archive member: {txt_file}")
 
-            extract_path = Path(zf.extract(txt_file, zip_path.parent)).resolve()
-            if not extract_path.is_relative_to(zip_path.parent.resolve()):
-                raise ValueError(f"Archive member escapes watch directory: {txt_file}")
-
-            return extract_path
+            temp_path: Path | None = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    prefix="living-brain-export-",
+                    suffix=".txt",
+                    delete=False,
+                ) as target:
+                    temp_path = Path(target.name)
+                    with zf.open(txt_file) as source:
+                        shutil.copyfileobj(source, target)
+                return temp_path
+            except Exception:
+                if temp_path is not None:
+                    temp_path.unlink(missing_ok=True)
+                raise
 
     def start(self, blocking: bool = True) -> None:
         """
