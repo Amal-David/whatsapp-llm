@@ -179,9 +179,7 @@ class FactStore:
         if not facts:
             return
         with self._lock:
-            updated_facts = {
-                key: replace(existing) for key, existing in self._facts.items()
-            }
+            updated_facts = dict(self._facts)
 
             for fact in facts:
                 existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(
