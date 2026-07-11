@@ -177,3 +177,7 @@ private/
 pseudonym.key
 ChatStorage.sqlite*
 wacli.db*
+
+# Local research-council runtime state
+.research-runs/
+research-runs/

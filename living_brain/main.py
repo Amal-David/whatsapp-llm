@@ -8,6 +8,7 @@ import logging
 import os
 import secrets
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 logging.basicConfig(
@@ -492,6 +493,206 @@ def _add_self_build_arguments(parser):
     )
 
 
+def cmd_research_init(args):
+    """Initialize or resume a research-council run."""
+    from .research.council import initialize_run
+
+    manifest = initialize_run(
+        args.run_dir,
+        run_id=args.run_id,
+        council_path=args.council,
+        schema_path=args.schema,
+    )
+    print(
+        json.dumps(
+            {
+                "run_id": manifest["run_id"],
+                "run_dir": str(Path(args.run_dir).resolve()),
+                "seat_count": len(manifest["seats"]),
+                "status": "initialized",
+            },
+            sort_keys=True,
+        )
+    )
+
+
+def cmd_research_validate_seat(args):
+    """Validate and register one research-seat artifact."""
+    from .research.council import record_seat_artifact
+
+    manifest = record_seat_artifact(
+        args.run_dir,
+        seat_id=args.seat,
+        artifact_path=args.input,
+        agent_id=args.agent_id,
+        query_strategy=args.query,
+    )
+    print(
+        json.dumps(
+            {
+                "run_id": manifest["run_id"],
+                "seat": args.seat,
+                **manifest["seats"][args.seat],
+            },
+            sort_keys=True,
+        )
+    )
+
+
+def cmd_research_merge(args):
+    """Merge every validated council seat into one deduplicated draft corpus."""
+    from .research.council import merge_run
+
+    report = merge_run(args.run_dir, output_path=args.output)
+    print(json.dumps(report.to_dict(), sort_keys=True))
+
+
+def cmd_research_status(args):
+    """Report text-free council run progress."""
+    from .research.council import summarize_run
+
+    print(json.dumps(summarize_run(args.run_dir), sort_keys=True))
+
+
+def cmd_research(args):
+    """Dispatch research-council subcommands."""
+    commands = {
+        "init": cmd_research_init,
+        "validate-seat": cmd_research_validate_seat,
+        "merge": cmd_research_merge,
+        "status": cmd_research_status,
+    }
+    commands[args.research_command](args)
+
+
+def cmd_brain_guide(args):
+    """Run the guided digital-brain workflow in an explicit safe source mode."""
+    from .brain.demo import run_guided_demo
+
+    if not args.demo:
+        raise ValueError("the guided workflow requires an explicit source mode")
+    summary = run_guided_demo(args.workspace, as_of=args.as_of)
+    print(json.dumps(summary.to_dict(), ensure_ascii=True, sort_keys=True))
+
+
+def cmd_brain_coverage(args):
+    """Report evidence strength and the next owner questions without state content."""
+    from .brain.coverage import analyze_coverage
+    from .brain.models import DigitalBrain
+
+    brain = DigitalBrain.load(args.brain)
+    report = analyze_coverage(
+        brain,
+        as_of=args.as_of,
+        stale_after_days=args.stale_after_days,
+        max_questions=args.max_questions,
+    )
+    print(json.dumps(report.to_dict(), ensure_ascii=True, sort_keys=True))
+
+
+def cmd_brain_inspect(args):
+    """Inspect layered state while permanently redacting third-party content."""
+    from .brain.inspection import inspect_brain
+    from .brain.models import BrainLayer, DigitalBrain
+
+    brain = DigitalBrain.load(args.brain)
+    result = inspect_brain(
+        brain,
+        as_of=args.as_of,
+        layer=BrainLayer(args.layer) if args.layer else None,
+        relationship_id=args.relationship_id,
+        include_history=args.history,
+        include_payload=args.include_payload,
+        include_sensitive=args.include_sensitive,
+    )
+    print(json.dumps(result, ensure_ascii=True, sort_keys=True))
+
+
+def cmd_brain_migrate(args):
+    """Migrate one private digital-self v1 profile into brain v2."""
+    from .brain.migration import migrate_v1_profile
+    from .identity.models import DigitalSelfProfile
+
+    brain = migrate_v1_profile(DigitalSelfProfile.load(args.profile))
+    brain.save(args.output)
+    print(
+        json.dumps(
+            {
+                "schema_version": brain.schema_version,
+                "brain_id": brain.brain_id,
+                "brain_version": brain.version,
+                "output": str(Path(args.output)),
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+        )
+    )
+
+
+def cmd_brain_correct(args):
+    """Apply one owner-authored correction from a private JSON file."""
+    from .brain.models import DigitalBrain
+
+    correction = json.loads(Path(args.correction).read_text(encoding="utf-8"))
+    if not isinstance(correction, dict):
+        raise ValueError("correction file must contain one JSON object")
+    required = {"summary", "payload", "reason", "corrected_at"}
+    missing = sorted(required - set(correction))
+    unknown = sorted(set(correction) - required)
+    if missing:
+        raise ValueError(f"correction file is missing fields: {missing}")
+    if unknown:
+        raise ValueError(f"correction file has unknown fields: {unknown}")
+    if not isinstance(correction["payload"], dict):
+        raise ValueError("correction payload must be a JSON object")
+
+    brain = DigitalBrain.load(args.brain)
+    corrected = brain.apply_owner_correction(
+        args.item_id,
+        summary=correction["summary"],
+        payload=correction["payload"],
+        corrected_at=_aware_datetime(correction["corrected_at"]),
+        reason=correction["reason"],
+    )
+    brain.save(args.output)
+    print(
+        json.dumps(
+            {
+                "brain_id": brain.brain_id,
+                "brain_version": brain.version,
+                "original_item_id": args.item_id,
+                "replacement_item_id": corrected.id,
+                "output": str(Path(args.output)),
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+        )
+    )
+
+
+def cmd_brain(args):
+    """Dispatch digital-brain subcommands."""
+    commands = {
+        "guide": cmd_brain_guide,
+        "coverage": cmd_brain_coverage,
+        "inspect": cmd_brain_inspect,
+        "migrate": cmd_brain_migrate,
+        "correct": cmd_brain_correct,
+    }
+    commands[args.brain_command](args)
+
+
+def _aware_datetime(value):
+    """Parse one ISO timestamp for deterministic brain operations."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("timestamp must be ISO 8601") from error
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
+    return parsed
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Living Brain: A Continuous Personal AI Clone",
@@ -622,6 +823,207 @@ def main():
         help="Text-free summary path (defaults beside the private suite)",
     )
 
+    # Public research-council commands
+    research_parser = subparsers.add_parser(
+        "research",
+        help="Run and validate the digital-self research council",
+    )
+    research_subparsers = research_parser.add_subparsers(
+        dest="research_command",
+        required=True,
+        help="Research council commands",
+    )
+
+    research_init_parser = research_subparsers.add_parser(
+        "init",
+        help="Initialize or resume a council run",
+    )
+    research_init_parser.add_argument("--run-dir", required=True, help="Run state directory")
+    research_init_parser.add_argument("--run-id", required=True, help="Stable run identifier")
+    research_init_parser.add_argument(
+        "--council",
+        required=True,
+        help="Council YAML contract",
+    )
+    research_init_parser.add_argument(
+        "--schema",
+        required=True,
+        help="Paper record JSON Schema",
+    )
+
+    research_validate_parser = research_subparsers.add_parser(
+        "validate-seat",
+        help="Validate and register one seat JSONL artifact",
+    )
+    research_validate_parser.add_argument(
+        "--run-dir",
+        required=True,
+        help="Run state directory",
+    )
+    research_validate_parser.add_argument("--seat", required=True, help="Council seat id")
+    research_validate_parser.add_argument("--input", required=True, help="Seat JSONL path")
+    research_validate_parser.add_argument(
+        "--agent-id",
+        required=True,
+        help="Research agent provenance id",
+    )
+    research_validate_parser.add_argument(
+        "--query",
+        action="append",
+        required=True,
+        help="Search strategy query; repeat to record multiple queries",
+    )
+
+    research_merge_parser = research_subparsers.add_parser(
+        "merge",
+        help="Merge all complete seats into a deduplicated draft corpus",
+    )
+    research_merge_parser.add_argument("--run-dir", required=True, help="Run state directory")
+    research_merge_parser.add_argument("--output", required=True, help="Draft corpus JSONL")
+
+    research_status_parser = research_subparsers.add_parser(
+        "status",
+        help="Report council run progress",
+    )
+    research_status_parser.add_argument("--run-dir", required=True, help="Run state directory")
+
+    # Evidence-grounded digital-brain commands
+    brain_parser = subparsers.add_parser(
+        "brain",
+        help="Inspect and exercise the evidence-grounded digital brain",
+    )
+    brain_subparsers = brain_parser.add_subparsers(
+        dest="brain_command",
+        required=True,
+        help="Digital-brain commands",
+    )
+    brain_guide_parser = brain_subparsers.add_parser(
+        "guide",
+        help="Run source selection through evaluation in one local workflow",
+    )
+    brain_guide_parser.add_argument(
+        "--demo",
+        action="store_true",
+        required=True,
+        help="Use the bundled synthetic fixture without reading private data",
+    )
+    brain_guide_parser.add_argument(
+        "--workspace",
+        required=True,
+        help="Private directory for versioned workflow artifacts",
+    )
+    brain_guide_parser.add_argument(
+        "--as-of",
+        type=_aware_datetime,
+        default=datetime.now(timezone.utc),
+        help="Evaluation time as an offset-aware ISO 8601 timestamp",
+    )
+
+    brain_migrate_parser = brain_subparsers.add_parser(
+        "migrate",
+        help="Migrate a private digital-self v1 profile into brain v2",
+    )
+    brain_migrate_parser.add_argument("profile", help="Digital-self v1 JSON path")
+    brain_migrate_parser.add_argument(
+        "--output",
+        required=True,
+        help="Owner-only digital-brain v2 JSON path",
+    )
+
+    brain_correct_parser = brain_subparsers.add_parser(
+        "correct",
+        help="Apply an owner correction without placing private text in shell history",
+    )
+    brain_correct_parser.add_argument("brain", help="Digital-brain v2 JSON path")
+    brain_correct_parser.add_argument(
+        "--item-id",
+        required=True,
+        help="Current state item to supersede",
+    )
+    brain_correct_parser.add_argument(
+        "--correction",
+        required=True,
+        help="Private JSON with summary, payload, reason, and corrected_at",
+    )
+    brain_correct_parser.add_argument(
+        "--output",
+        required=True,
+        help="Owner-only corrected digital-brain JSON path",
+    )
+
+    brain_coverage_parser = brain_subparsers.add_parser(
+        "coverage",
+        help="Report strong, weak, stale, unknown, and conflicting state",
+    )
+    brain_coverage_parser.add_argument("brain", help="Digital-brain v2 JSON path")
+    brain_coverage_parser.add_argument(
+        "--as-of",
+        type=_aware_datetime,
+        default=datetime.now(timezone.utc),
+        help="Coverage time as an offset-aware ISO 8601 timestamp",
+    )
+    brain_coverage_parser.add_argument(
+        "--stale-after-days",
+        type=int,
+        default=180,
+        help="Days after which persistent state needs owner reconfirmation",
+    )
+    brain_coverage_parser.add_argument(
+        "--max-questions",
+        type=int,
+        default=5,
+        help="Maximum highest-value owner questions to return",
+    )
+
+    brain_inspect_parser = brain_subparsers.add_parser(
+        "inspect",
+        help="Inspect state by layer, relationship scope, and provenance",
+    )
+    brain_inspect_parser.add_argument("brain", help="Digital-brain v2 JSON path")
+    brain_inspect_parser.add_argument(
+        "--as-of",
+        type=_aware_datetime,
+        default=datetime.now(timezone.utc),
+        help="Inspection time as an offset-aware ISO 8601 timestamp",
+    )
+    brain_inspect_parser.add_argument(
+        "--layer",
+        choices=[
+            "event",
+            "episode",
+            "semantic",
+            "procedural",
+            "self_schema",
+            "values_goals",
+            "affect",
+            "social",
+            "narrative",
+            "communication",
+            "uncertainty",
+            "reflection",
+        ],
+        help="Restrict inspection to one brain layer",
+    )
+    brain_inspect_parser.add_argument(
+        "--relationship-id",
+        help="Include global state and exactly one relationship scope",
+    )
+    brain_inspect_parser.add_argument(
+        "--history",
+        action="store_true",
+        help="Include historical and rejected versions",
+    )
+    brain_inspect_parser.add_argument(
+        "--include-payload",
+        action="store_true",
+        help="Include owner payloads; third-party payloads remain redacted",
+    )
+    brain_inspect_parser.add_argument(
+        "--include-sensitive",
+        action="store_true",
+        help="Reveal owner-sensitive summaries when explicitly requested",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -638,6 +1040,8 @@ def main():
         "watch": cmd_watch,
         "stats": cmd_stats,
         "self": cmd_self,
+        "research": cmd_research,
+        "brain": cmd_brain,
     }
 
     try:

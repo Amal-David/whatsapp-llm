@@ -27,12 +27,24 @@ jobs:
         run: |
           python -m living_brain.main --help
           python -m living_brain.main self --help
+          python -m living_brain.main brain --help
+          python -m living_brain.main research --help
           python -m living_brain.main parse sample_chat.txt --your-name Alex --date-order mdy --output /tmp/living-brain-smoke
       - name: Run tests
         run: pytest tests -q -o addopts=''
+      - name: Build package artifacts
+        run: python -m build
+      - name: Smoke test installed wheel
+        run: |
+          python -m venv /tmp/living-brain-wheel
+          /tmp/living-brain-wheel/bin/pip install dist/*.whl
+          /tmp/living-brain-wheel/bin/living-brain --help
+          /tmp/living-brain-wheel/bin/living-brain brain --help
+          /tmp/living-brain-wheel/bin/living-brain brain guide --demo --workspace /tmp/living-brain-wheel-demo --as-of 2026-07-11T12:00:00+00:00
       - name: Run focused lint
         run: >-
           ruff check tests
+          living_brain/brain
           living_brain/core/config.py
           living_brain/identity
           living_brain/inference/chat.py
@@ -47,10 +59,12 @@ jobs:
           living_brain/memory/fact_store.py
           living_brain/memory/retriever.py
           living_brain/memory/vector_store.py
+          living_brain/research
           living_brain/style/trainer.py
       - name: Run focused type checks
         run: >-
           mypy
+          living_brain/brain
           living_brain/core/config.py
           living_brain/identity
           living_brain/inference/chat.py
@@ -65,4 +79,5 @@ jobs:
           living_brain/memory/fact_store.py
           living_brain/memory/retriever.py
           living_brain/memory/vector_store.py
+          living_brain/research
           living_brain/style/trainer.py

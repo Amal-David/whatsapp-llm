@@ -203,5 +203,16 @@ def test_root_cli_help_keeps_existing_commands_and_adds_self(monkeypatch, capsys
         main()
 
     output = capsys.readouterr().out
-    for command in ("parse", "train", "chat", "workbench", "ingest", "watch", "stats", "self"):
+    for command in (
+        "parse",
+        "train",
+        "chat",
+        "workbench",
+        "ingest",
+        "watch",
+        "stats",
+        "self",
+        "research",
+        "brain",
+    ):
         assert command in output

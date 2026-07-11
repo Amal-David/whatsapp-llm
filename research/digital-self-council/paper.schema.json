@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Amal-David/whatsapp-llm/research/digital_self_paper.v1.schema.json",
+  "title": "Digital-Self Research Paper Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "canonical_id",
+    "alternate_ids",
+    "title",
+    "authors",
+    "year",
+    "venue",
+    "publication_type",
+    "primary_url",
+    "seat",
+    "taxonomy_tags",
+    "research_question",
+    "method",
+    "population_or_data",
+    "modalities",
+    "core_finding",
+    "architecture_implications",
+    "limitations",
+    "evidence_strength",
+    "relevance_score",
+    "inspection_depth",
+    "counted",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "digital_self_paper.v1"},
+    "record_id": {"type": "string", "pattern": "^paper:[a-z0-9][a-z0-9._-]+$"},
+    "canonical_id": {"$ref": "#/$defs/paper_identifier"},
+    "alternate_ids": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/paper_identifier"},
+      "uniqueItems": true
+    },
+    "title": {"$ref": "#/$defs/non_empty_string"},
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/non_empty_string"}
+    },
+    "year": {"type": "integer", "minimum": 1900, "maximum": 2100},
+    "venue": {"$ref": "#/$defs/non_empty_string"},
+    "publication_type": {
+      "enum": ["journal", "conference", "workshop", "preprint", "book", "chapter", "report", "thesis"]
+    },
+    "primary_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "seat": {
+      "enum": [
+        "psychometrics",
+        "narrative_identity",
+        "cognitive_memory",
+        "persona_dialogue",
+        "social_relationships",
+        "longitudinal_modeling",
+        "values_decisions_emotion",
+        "evaluation_fidelity",
+        "privacy_identity_safety",
+        "digital_twins_agents"
+      ]
+    },
+    "taxonomy_tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "active_learning",
+          "affect",
+          "autobiographical_memory",
+          "behavioral_fidelity",
+          "behavioral_inference",
+          "calibration",
+          "cognitive_architecture",
+          "consent",
+          "continual_learning",
+          "decision_making",
+          "digital_twin",
+          "dialogue",
+          "evaluation",
+          "forgetting",
+          "goals",
+          "identity_rights",
+          "lifelogging",
+          "longitudinal_change",
+          "memory_consolidation",
+          "narrative_identity",
+          "persona",
+          "personality",
+          "privacy",
+          "relationship_modeling",
+          "roleplay",
+          "self_schema",
+          "social_identity",
+          "theory_of_mind",
+          "uncertainty",
+          "user_modeling",
+          "values"
+        ]
+      }
+    },
+    "research_question": {"$ref": "#/$defs/non_empty_string"},
+    "method": {"$ref": "#/$defs/non_empty_string"},
+    "population_or_data": {"$ref": "#/$defs/non_empty_string"},
+    "modalities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/non_empty_string"}
+    },
+    "core_finding": {"$ref": "#/$defs/non_empty_string"},
+    "architecture_implications": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/non_empty_string"}
+    },
+    "limitations": {"$ref": "#/$defs/non_empty_string"},
+    "evidence_strength": {
+      "enum": ["foundational", "strong", "moderate", "limited", "theoretical"]
+    },
+    "relevance_score": {"type": "integer", "minimum": 1, "maximum": 5},
+    "inspection_depth": {"enum": ["full_text", "abstract", "metadata"]},
+    "counted": {"type": "boolean"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extractor", "extracted_at", "reviewer", "reviewed_at", "search_queries"],
+      "properties": {
+        "extractor": {"$ref": "#/$defs/non_empty_string"},
+        "extracted_at": {"type": "string", "format": "date-time"},
+        "reviewer": {
+          "oneOf": [{"$ref": "#/$defs/non_empty_string"}, {"type": "null"}]
+        },
+        "reviewed_at": {
+          "oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]
+        },
+        "search_queries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/non_empty_string"}
+        },
+        "contributing_seats": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "psychometrics",
+              "narrative_identity",
+              "cognitive_memory",
+              "persona_dialogue",
+              "social_relationships",
+              "longitudinal_modeling",
+              "values_decisions_emotion",
+              "evaluation_fidelity",
+              "privacy_identity_safety",
+              "digital_twins_agents"
+            ]
+          }
+        },
+        "merged_record_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^paper:[a-z0-9][a-z0-9._-]+$"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "non_empty_string": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "paper_identifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {"enum": ["doi", "arxiv", "acl", "pubmed", "title_year", "isbn"]},
+        "value": {"$ref": "#/$defs/non_empty_string"}
+      }
+    }
+  }
+}

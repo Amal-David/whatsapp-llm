@@ -13,6 +13,9 @@ The package is still named `living-brain`, and the CLI command is
 - Read selected chats directly from WhatsApp for Mac or a local `wacli` mirror.
 - Build a versioned self model with provenance, confidence, validity windows,
   contradictions, and owner confirmation.
+- Reproduce a ten-seat, 187-paper research council for human representation.
+- Exercise a typed, versioned digital-brain PoC with coverage, correction,
+  deliberation, and hard-gated evaluation.
 - Keep global identity separate from relationship-specific communication style.
 - Evaluate profile-only and retrieval-backed behavior on held-out chats and
   explicit interview retests.
@@ -35,6 +38,8 @@ not designed for deceptive impersonation or detector evasion.
 | --- | --- |
 | WhatsApp parsing | Participant discovery, conversation splitting, system/media filtering, JSONL export |
 | Digital self | Guided owner interview, read-only multi-chat sources, versioned claims, temporal validity |
+| Research council | Ten bounded seats, independent cross-review, 187 unique papers, evidence map, synthesis |
+| Digital brain PoC | Twelve typed state layers, deterministic migration, consolidation, simulation, correction |
 | Relationships | Pseudonymous per-chat style deltas without treating contacts' words as owner identity |
 | Style analysis | Length, emoji, punctuation, capitalization, common phrases, response behavior |
 | Dataset workbench | Gradio UI, participant picker, consent gate, ZIP artifact download |
@@ -146,6 +151,37 @@ living-brain self evaluate \
 The private suite may contain held-out contact prompts and owner replies. It is
 written with owner-only permissions. The summary contains counts and coverage
 only, so it can be inspected without reproducing dialogue.
+
+## Digital Brain Proof Of Concept
+
+The research-backed v2 PoC treats the canonical self as typed, versioned state
+with provenance, confidence, time, sensitivity, ownership, and context scope. It
+does not treat an LLM, vector index, prompt, or style adapter as the person.
+
+Run the complete workflow on synthetic data only:
+
+```bash
+living-brain brain guide \
+  --demo \
+  --workspace ./private/brain-demo \
+  --as-of 2026-07-11T12:00:00+00:00
+```
+
+The command performs source selection, coverage analysis, adaptive interview,
+versioned build, inspection, owner correction, grounded simulation, and eight-axis
+evaluation without reading WhatsApp or calling an external model. Reopen the final
+state with `living-brain brain coverage` or `living-brain brain inspect`.
+
+The evidence snapshot contains 200 reviewed seat records and 187 unique papers
+after deduplication: 100 full-text and 87 abstract inspections. Start with the
+[`research council`](research/digital-self-council/README.md), the
+[`integrated synthesis`](research/digital-self-council/synthesis.md), and the
+[`implementation and verification guide`](docs/digital-brain-poc.md).
+
+This remains a bounded proof of concept, not a complete human replica. Real local
+sources currently build `digital_self.v1` first and migrate with
+`living-brain brain migrate`; automated event-to-state extraction, complete
+deletion propagation, and autonomous representation are intentionally absent.
 
 ## Persona Dataset Quick Start
 
@@ -386,16 +422,21 @@ print(recommendation.to_markdown())
 
 ```text
 living_brain/
+  brain/         typed state, migration, consolidation, simulation, evaluation
   core/          configuration
   identity/      self model, interviews, read-only sources, prompt, evaluation
   ingest/        WhatsApp parsing, style analysis, dataset builders
   inference/     Gradio chat, dataset UI, orchestrator
   memory/        ChromaDB store, facts, retrieval, consolidation
+  research/      corpus validation, council orchestration, evidence-map checks
   style/         dataset formatting, adapter training, adapter management
   main.py        CLI entry point
 docs/
+  digital-brain-poc.md
   persona-methods-study.md
   persona-authenticity-source-corpus.jsonl
+research/
+  digital-self-council/  public paper corpus, reviews, synthesis, manifest
 tests/
   test_pr_review_regressions.py
 ```
@@ -411,6 +452,10 @@ tests/
   official WhatsApp API or guaranteed complete archive.
 - Keep the pseudonym key, interview, profile, and private evaluation suite out of
   source control.
+- Treat generated brain snapshots, guided-run artifacts, and council runtime
+  directories as private local data; only the public research corpus is committed.
+- Brain snapshots can contain authorized owner evidence payloads. Use the redacted
+  inspection command for review; do not treat the canonical JSON as a safe export.
 - Leave third-party context disabled unless every included participant gave permission.
 - Review every generated dataset before training.
 - Treat synthetic rows as synthetic.
@@ -418,6 +463,8 @@ tests/
 - Keep held-out real replies for distribution and memorization checks.
 - Do not invent private facts.
 - Label AI-assisted drafts when they leave private testing.
+- Never grant generated output authority to send, promise, transact, or represent
+  the owner. High-stakes or under-supported cases require the owner.
 
 Core parsing and dataset generation do not require external APIs.
 
@@ -449,7 +496,9 @@ Run the focused lint checks locally:
 
 ```bash
 uvx ruff check tests \
+  living_brain/brain \
   living_brain/identity \
+  living_brain/research \
   living_brain/main.py \
   living_brain/ingest/persona_dataset.py \
   living_brain/ingest/whatsapp_parser.py \

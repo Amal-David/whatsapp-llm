@@ -1,0 +1,618 @@
+{
+  "schema_version": "digital_self_evidence_map.v1",
+  "corpus_sha256": "159f0c68cfcf5b0b06fa1523521a88647ba4c9081f6047df640fa58ed13e701e",
+  "claims": [
+    {
+      "id": "claim:trace-prediction-is-not-identity",
+      "domain": "construct_validity",
+      "claim": "Language and behavioral traces can predict trait-related labels, but prediction does not establish a complete or construct-valid representation of a person.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:psychometrics_mairesse_2007",
+        "paper:psychometrics_park_2015",
+        "paper:psychometrics_stachl_2020"
+      ],
+      "contradicting_paper_ids": [
+        "paper:psychometrics_laajaj_2019",
+        "paper:psychometrics_mezquita_2019"
+      ],
+      "architecture_decisions": [
+        "Keep behavioral inferences tentative, scoped to source context, and separately confirmable by the owner."
+      ],
+      "confidence_rationale": "Multiple predictive studies coexist with measurement and cross-cultural validity failures."
+    },
+    {
+      "id": "claim:trait-state-context-separation",
+      "domain": "construct_validity",
+      "claim": "Stable trait estimates, momentary states, roles, situations, and measurement error must be represented separately.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:psychometrics_fleeson_2001",
+        "paper:psychometrics_sherman_2015",
+        "paper:psychometrics_epstein_1983"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Attach temporal scope and context to every inferred disposition instead of writing one global trait scalar."
+      ],
+      "confidence_rationale": "Within-person variation and aggregation evidence directly reject a context-free single observation."
+    },
+    {
+      "id": "claim:autobiographical-cue-structure",
+      "domain": "narrative_identity",
+      "claim": "Autobiographical retrieval is supported by owner-specific lifetime periods, general events, chapters, and self-images rather than a flat list alone.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:conway-bekerian-1987-organization",
+        "paper:chen-mcanally-reese-2013-memory-organization",
+        "paper:rathbone-moulin-conway-2008-self-centered"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Represent owner-editable life periods and self-images as retrieval paths over source-linked episodes."
+      ],
+      "confidence_rationale": "Reviewed studies support structured cueing, while the review explicitly avoids claiming one necessary storage topology."
+    },
+    {
+      "id": "claim:event-meaning-versioning",
+      "domain": "narrative_identity",
+      "claim": "The identity and factual core of an event can persist while its meaning, audience, affect, and narrative interpretation change.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:mcadams-et-al-2006-continuity-change",
+        "paper:kober-habermas-2017-personal-past-stability",
+        "paper:jardmo-et-al-2023-repeated-narratives"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Store source event claims separately from append-only narrative versions and current interpretation."
+      ],
+      "confidence_rationale": "Longitudinal repeated-narrative studies directly distinguish recurrence from reinterpretation."
+    },
+    {
+      "id": "claim:recall-is-reconstructive",
+      "domain": "narrative_identity",
+      "claim": "Autobiographical recall and current self-description are reconstructive and sensitive to perspective, prompts, and current self-compatibility.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:libby-eibach-2002-looking-back",
+        "paper:dargembeau-garcia-jimenez-2024-working-self"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Log elicitation prompt, order, timestamp, and later confirmation before promoting durable self claims."
+      ],
+      "confidence_rationale": "Experimental evidence shows immediate prompt and perspective effects; it does not validate automatic truth recovery."
+    },
+    {
+      "id": "claim:memory-systems-separate",
+      "domain": "memory",
+      "claim": "Episodic, semantic, procedural, working, and prospective memory have distinguishable functions and failure patterns.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-vargha-khadem-1997",
+        "paper:cognitive-memory-cohen-squire-1980",
+        "paper:cognitive-memory-baddeley-2000",
+        "paper:cognitive-memory-einstein-mcdaniel-1990"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Use distinct state layers and retrieval policies for episodes, knowledge, procedures, active context, and intentions."
+      ],
+      "confidence_rationale": "Converging neuropsychological, experimental, and theoretical evidence supports functional separation without implying software equivalence."
+    },
+    {
+      "id": "claim:memory-processes-not-storage-only",
+      "domain": "memory",
+      "claim": "Consolidation, retrieval practice, interference, reconsolidation, and forgetting alter accessibility and interpretation over time.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-mcclelland-mcnaughton-oreilly-1995",
+        "paper:cognitive-memory-karpicke-roediger-2008",
+        "paper:cognitive-memory-hupbach-et-al-2007",
+        "paper:cognitive-memory-anderson-bjork-bjork-1994"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Model consolidation and retrieval priority as versioned processes; never equate low retrieval rank with deletion or falsity."
+      ],
+      "confidence_rationale": "Reviewed evidence shows multiple process effects, with translation to software treated as a design constraint rather than cognitive replication."
+    },
+    {
+      "id": "claim:source-monitoring-required",
+      "domain": "memory",
+      "claim": "Remembered content and remembered source are separable, so provenance confidence must be explicit.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-hashtroudi-johnson-chrosniak-1989"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Require source IDs and source-confidence on all semantic, autobiographical, and reflected state."
+      ],
+      "confidence_rationale": "Direct source-monitoring evidence supports the epistemic requirement, although implementation details remain open."
+    },
+    {
+      "id": "claim:retrieval-is-context-sensitive",
+      "domain": "memory",
+      "claim": "Retrieval can depend on environmental and task context rather than content similarity alone.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-godden-baddeley-1975",
+        "paper:cognitive-memory-einstein-et-al-2005"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Include situation, channel, time, audience, and task cues in retrieval, while testing whether each cue improves owner fidelity."
+      ],
+      "confidence_rationale": "Classic and prospective-memory evidence supports context effects but not a universal weighting rule."
+    },
+    {
+      "id": "claim:persona-consistency-not-fidelity",
+      "domain": "persona",
+      "claim": "Persona conditioning can improve explicit consistency or detectability without proving identity fidelity, engagement, or internal-state recovery.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:persona-dialogue-zhang-2018",
+        "paper:persona-dialogue-welleck-2019",
+        "paper:incharacter-2024"
+      ],
+      "contradicting_paper_ids": [
+        "paper:personality-temporal-stability-2024",
+        "paper:synthetic-replacements-2024"
+      ],
+      "architecture_decisions": [
+        "Evaluate persona consistency separately from owner prediction, temporal stability, subgroup fidelity, and memorization."
+      ],
+      "confidence_rationale": "Cross-reviewed corrections explicitly reject treating persona metrics as owner fidelity."
+    },
+    {
+      "id": "claim:external-memory-helps-but-fails",
+      "domain": "persona",
+      "claim": "External memory and retrieval can improve long-horizon continuity, but current systems still lose, distort, or overgeneralize past interactions.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:locomo-2024",
+        "paper:longmemeval-2025",
+        "paper:memgpt-2023",
+        "paper:memorybank-2024"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Keep canonical memory outside model weights, expose retrieval traces, and benchmark long-horizon omissions and conflicts."
+      ],
+      "confidence_rationale": "System evaluations support the need for external memory while documenting persistent long-context failure."
+    },
+    {
+      "id": "claim:relationship-conditioned-behavior",
+      "domain": "social",
+      "claim": "Language, self-presentation, and behavior adapt to audience, relationship, role, and shared interaction history.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:andersen-chen-2002-relational-self",
+        "paper:bell-1984-audience-design",
+        "paper:brennan-clark-1996-conceptual-pacts",
+        "paper:ireland-et-al-2011-language-style-matching"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Maintain relationship-scoped behavior and communication policies alongside global owner state."
+      ],
+      "confidence_rationale": "Multiple social and language studies support audience and partner conditioning across methods."
+    },
+    {
+      "id": "claim:context-collapse-and-disclosure",
+      "domain": "social",
+      "claim": "A message sent to one audience does not license disclosure or behavioral generalization to another audience.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:marwick-boyd-2011-context-collapse",
+        "paper:vitak-2012-context-collapse-privacy",
+        "paper:lampinen-et-al-2011-were-in-it-together"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Attach audience and disclosure scope to evidence, and default to the narrowest compatible relationship boundary."
+      ],
+      "confidence_rationale": "Reviewed disclosure and context-collapse evidence directly supports compartmentalization."
+    },
+    {
+      "id": "claim:preferences-drift",
+      "domain": "longitudinal",
+      "claim": "Preferences and interaction patterns change over time, so static profiles become stale and can mispredict current behavior.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:koren-2009-temporal-dynamics",
+        "paper:xiang-2010-temporal-preference-fusion",
+        "paper:kumar-2019-jodie",
+        "paper:li-2020-tisasrec"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Store valid-from and valid-to intervals, temporal decay, and as-of queries for preferences and policies."
+      ],
+      "confidence_rationale": "Temporal recommender and interaction models consistently outperform or motivate static alternatives in bounded domains."
+    },
+    {
+      "id": "claim:active-owner-elicitation",
+      "domain": "longitudinal",
+      "claim": "Targeted elicitation and editable profiles can reduce cold-start uncertainty and improve owner control.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:rashid-2002-getting-to-know-you",
+        "paper:rashid-2008-information-theoretic-elicitation",
+        "paper:harpale-2008-personalized-active-learning",
+        "paper:ahn-2007-open-user-profiles"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Rank owner questions by expected uncertainty reduction, sensitivity, burden, and downstream decision impact."
+      ],
+      "confidence_rationale": "Primary studies support active elicitation and open profiles in recommendation/user-model settings; transfer beyond those settings requires evaluation."
+    },
+    {
+      "id": "claim:continual-learning-can-forget",
+      "domain": "longitudinal",
+      "claim": "Continual adaptation can overwrite prior capabilities or distort older state unless replay, constraints, or protected history are used.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:kirkpatrick-2017-ewc",
+        "paper:lopez-paz-2017-gem",
+        "paper:mi-2020-ader",
+        "paper:masson-dautume-2019-episodic-language-memory"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Use append-only evidence, replayable updates, protected owner corrections, and explicit supersession rather than silent mutation."
+      ],
+      "confidence_rationale": "Continual-learning evidence directly establishes forgetting risk, while the exact local profile policy is a translation."
+    },
+    {
+      "id": "claim:values-are-not-directly-observed",
+      "domain": "values_goals",
+      "claim": "Declared values have structure, but observed behavior is an uneven and context-confounded sensor of those values.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:schwartz-2012-refined-values",
+        "paper:bardi-schwartz-2003-values-behavior"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Separate owner-declared values, observed actions, norms, and inferred motives, with declaration outranking inference."
+      ],
+      "confidence_rationale": "Value structure and value-behavior studies jointly support the separation."
+    },
+    {
+      "id": "claim:choice-is-context-dependent",
+      "domain": "decisions",
+      "claim": "Choices depend on framing, option sets, anchors, and elicitation procedures rather than revealing one context-free utility.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:tversky-kahneman-1981-framing",
+        "paper:tversky-simonson-1993-context-preferences",
+        "paper:ariely-2003-coherent-arbitrariness",
+        "paper:chen-risen-2010-free-choice"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Persist each decision frame, available options, reference point, elicitation method, and outcome before learning a preference."
+      ],
+      "confidence_rationale": "Multiple experimental paradigms directly show context and measurement effects."
+    },
+    {
+      "id": "claim:goals-are-active-and-competing",
+      "domain": "values_goals",
+      "claim": "Current goals, desires, conflict, resistance, and enactment are separable states; silence or non-enactment does not prove a goal disappeared.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:shah-2002-goal-shielding",
+        "paper:hofmann-2012-everyday-temptations"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Represent an active-goal workspace over a durable versioned goal graph, including conflicts and status uncertainty."
+      ],
+      "confidence_rationale": "Experimental and experience-sampling evidence supports temporary activation and competition."
+    },
+    {
+      "id": "claim:affect-is-dynamic-and-contextual",
+      "domain": "affect",
+      "claim": "Affect is mixed, time-varying, appraisal-dependent, and interpreted through context; text classification is not ground truth of felt emotion.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:smith-ellsworth-1985-appraisal",
+        "paper:kuppens-2010-dynaffect",
+        "paper:trampe-2015-everyday-emotions",
+        "paper:carroll-russell-1996-face-context"
+      ],
+      "contradicting_paper_ids": [
+        "paper:demszky-2020-goemotions"
+      ],
+      "architecture_decisions": [
+        "Store time-indexed affect hypotheses and owner reports separately, with owner report outranking classifier output."
+      ],
+      "confidence_rationale": "Human studies support dynamics and context; the text benchmark's reader labels and bounded accuracy limit internal-state inference."
+    },
+    {
+      "id": "claim:mental-state-hypotheses-uncertain",
+      "domain": "theory_of_mind",
+      "claim": "Belief, desire, and motive inference can be structured, but remains uncertain and is vulnerable to egocentric and rationality assumptions.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:baker-2017-bayesian-mentalizing",
+        "paper:wu-2018-emotion-mental-states"
+      ],
+      "contradicting_paper_ids": [
+        "paper:keysar-2003-tom-limits",
+        "paper:epley-2004-perspective-taking"
+      ],
+      "architecture_decisions": [
+        "Keep competing mental-state hypotheses outside the factual owner model and use them to choose clarification questions."
+      ],
+      "confidence_rationale": "Formal models fit bounded judgments while behavioral studies show systematic perspective failures."
+    },
+    {
+      "id": "claim:multi-axis-fidelity-evaluation",
+      "domain": "evaluation",
+      "claim": "No single persona, style, psychometric, or aggregate simulation metric establishes fidelity to an individual owner.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:charactereval-2024",
+        "paper:sotopia-2024",
+        "paper:turing-experiments-2023",
+        "paper:out-of-one-many-2023"
+      ],
+      "contradicting_paper_ids": [
+        "paper:synthetic-replacements-2024",
+        "paper:llms-more-rational-2025",
+        "paper:llm-user-sim-crs-2024"
+      ],
+      "architecture_decisions": [
+        "Require behavioral, temporal, relational, autobiographical, decision, calibration, privacy, and owner-judgment evaluations."
+      ],
+      "confidence_rationale": "Positive aggregate and character evaluations are bounded by subgroup, covariance, rationality, and user-simulation failures."
+    },
+    {
+      "id": "claim:confidence-must-be-calibrated",
+      "domain": "evaluation",
+      "claim": "Generated confidence and linguistic certainty can diverge from correctness, so confidence must be calibrated against evidence and abstention outcomes.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:linguistic-calibration-2022"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Compute confidence from evidence coverage and conflict, not only model token likelihood or assertive language."
+      ],
+      "confidence_rationale": "Direct calibration evidence supports the distinction, though owner-specific calibration remains to be tested."
+    },
+    {
+      "id": "claim:memorization-and-leakage-risk",
+      "domain": "privacy",
+      "claim": "Personalized and language models can memorize, extract, or expose training records and personally identifiable information.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:carlini-2021-training-data-extraction",
+        "paper:quantifying-memorization-2023",
+        "paper:lukas-2023-pii-leakage",
+        "paper:aligned-production-extraction-2025"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Keep raw messages out of generated exports by default, test extraction attacks, and support source-level deletion."
+      ],
+      "confidence_rationale": "Multiple extraction and memorization studies demonstrate concrete leakage channels."
+    },
+    {
+      "id": "claim:sensitive-inference-risk",
+      "domain": "privacy",
+      "claim": "Behavioral and social traces can reveal sensitive or protected attributes that the owner did not explicitly provide.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:kosinski-2013-private-traits",
+        "paper:jernigan-2009-gaydar",
+        "paper:gong-2016-attribute-inference"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Block protected-trait promotion from behavioral inference and audit derived attributes for proxy leakage."
+      ],
+      "confidence_rationale": "Primary studies demonstrate sensitive inference from likes and social networks; this is a safety constraint, not a feature opportunity."
+    },
+    {
+      "id": "claim:interdependent-third-party-privacy",
+      "domain": "privacy",
+      "claim": "Personal data about one person can expose or depend on other people, so owner consent alone is not sufficient for unrestricted third-party modeling.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:franz-2022-interdependent-privacy",
+        "paper:gach-2021-facebook-affairs"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Compartmentalize third-party content as contextual evidence, minimize retention, and never promote contact traits into owner identity."
+      ],
+      "confidence_rationale": "Reviewed work directly identifies interdependent and relational privacy effects."
+    },
+    {
+      "id": "claim:retention-revocation-controls",
+      "domain": "privacy",
+      "claim": "Consent, retention, deletion, and unlearning are separate operational requirements; model training consent does not erase later revocation needs.",
+      "status": "validated",
+      "supporting_paper_ids": [
+        "paper:longpre-2024-consent-crisis",
+        "paper:bourtoule-2021-machine-unlearning",
+        "paper:abadi-2016-deep-learning-dp"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Record consent scope per source, support revocation and deletion, and avoid making model weights the only memory store."
+      ],
+      "confidence_rationale": "Evidence spans consent provenance, unlearning, and privacy-preserving training, with no single technique solving all requirements."
+    },
+    {
+      "id": "claim:layered-digital-brain",
+      "domain": "architecture",
+      "claim": "A useful digital self should use separate evidence, episode, semantic, procedural, self-schema, value/goal, affect, social, narrative, communication, uncertainty, and reflection layers.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-vargha-khadem-1997",
+        "paper:cognitive-memory-mcclelland-mcnaughton-oreilly-1995",
+        "paper:mcadams-et-al-2006-continuity-change",
+        "paper:andersen-chen-2002-relational-self"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Implement a typed, provenance-bearing state graph whose layers can be queried and corrected independently."
+      ],
+      "confidence_rationale": "The separations are evidence-backed, but their exact combination into one software model has not been directly validated."
+    },
+    {
+      "id": "claim:versioned-autobiographical-graph",
+      "domain": "architecture",
+      "claim": "A versioned graph linking life periods, general events, episodes, self-images, and narrative interpretations is a defensible autobiographical representation.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:conway-bekerian-1987-organization",
+        "paper:rathbone-moulin-conway-2008-self-centered",
+        "paper:jardmo-et-al-2023-repeated-narratives"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Use graph links as owner-editable retrieval paths while retaining source facts and competing narrative versions."
+      ],
+      "confidence_rationale": "The component relationships are supported; the software graph itself remains an architecture hypothesis."
+    },
+    {
+      "id": "claim:relationship-compartments",
+      "domain": "architecture",
+      "claim": "Global identity and multiple relationship-scoped selves can coexist without being treated as contradictions.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:andersen-chen-2002-relational-self",
+        "paper:bell-1984-audience-design",
+        "paper:marwick-boyd-2011-context-collapse"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Resolve state using explicit audience, relationship, role, channel, and disclosure scope before simulation."
+      ],
+      "confidence_rationale": "Relational and audience evidence supports scoped behavior, but the proposed resolution algorithm needs product evaluation."
+    },
+    {
+      "id": "claim:auditable-consolidation-reflection",
+      "domain": "architecture",
+      "claim": "Consolidation should create reviewable semantic and self-model updates while preserving evidence, superseded versions, conflicts, and deliberate non-inferences.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:cognitive-memory-mcclelland-mcnaughton-oreilly-1995",
+        "paper:cognitive-memory-hupbach-et-al-2007",
+        "paper:kirkpatrick-2017-ewc"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Emit reflection records that state what changed, why, which evidence was used, confidence, conflicts, and what was not inferred."
+      ],
+      "confidence_rationale": "Memory and continual-learning evidence motivates the mechanism; audit-record semantics are a product design hypothesis."
+    },
+    {
+      "id": "claim:deliberative-situation-model",
+      "domain": "architecture",
+      "claim": "Simulation should first represent audience, relationship, intent, stakes, time, channel, and authority, then retrieve each state layer separately before choosing a response.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:bell-1984-audience-design",
+        "paper:metzing-brennan-2003-conceptual-pacts-broken",
+        "paper:locomo-2024",
+        "paper:persona-dialogue-welleck-2019"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Generate alternatives and an evidence trace before selecting or abstaining, rather than relying on one flat persona prompt."
+      ],
+      "confidence_rationale": "Situation and memory dependencies are evidence-backed; the specific deliberation pipeline awaits comparative evaluation."
+    },
+    {
+      "id": "claim:adaptive-elicitation-priority",
+      "domain": "architecture",
+      "claim": "Owner questions should be prioritized by uncertainty reduction, sensitivity, burden, staleness, and impact on future simulations.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:rashid-2008-information-theoretic-elicitation",
+        "paper:harpale-2008-personalized-active-learning",
+        "paper:bostandjiev-2012-tasteweights"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Expose why each question is being asked and let the owner skip, correct, scope, or revoke the answer."
+      ],
+      "confidence_rationale": "Active-learning evidence supports value-of-information selection in bounded systems; the multi-factor priority policy needs validation."
+    },
+    {
+      "id": "claim:calibrated-abstention",
+      "domain": "architecture",
+      "claim": "High-stakes, under-supported, conflicted, or unauthorized scenarios should produce abstention or an owner question rather than confident imitation.",
+      "status": "plausible",
+      "supporting_paper_ids": [
+        "paper:linguistic-calibration-2022",
+        "paper:synthetic-replacements-2024",
+        "paper:mireshghallah-2024-confaide"
+      ],
+      "contradicting_paper_ids": [],
+      "architecture_decisions": [
+        "Define evidence coverage and authority thresholds, with explicit abstention reasons in every simulation trace."
+      ],
+      "confidence_rationale": "Calibration and privacy evidence motivate abstention; exact thresholds require owner-centered evaluation."
+    },
+    {
+      "id": "claim:whatsapp-complete-replica",
+      "domain": "non_goal",
+      "claim": "WhatsApp interaction history alone can recover a complete, stable, faithful digital replica of a person.",
+      "status": "speculative",
+      "supporting_paper_ids": [],
+      "contradicting_paper_ids": [
+        "paper:mclean-2005-meaning-telling",
+        "paper:bardi-schwartz-2003-values-behavior",
+        "paper:psychometrics_fleeson_2001",
+        "paper:synthetic-replacements-2024"
+      ],
+      "architecture_decisions": [
+        "Treat chat as partial behavioral evidence and report unobserved dimensions instead of claiming completeness."
+      ],
+      "confidence_rationale": "The reviewed corpus repeatedly shows audience selection, value-behavior gaps, state variation, and simulation failures; no included study validates complete reconstruction."
+    },
+    {
+      "id": "claim:latent-motive-recovery",
+      "domain": "non_goal",
+      "claim": "A model that predicts an owner's messages has recovered the owner's true motives, beliefs, values, or emotions.",
+      "status": "speculative",
+      "supporting_paper_ids": [],
+      "contradicting_paper_ids": [
+        "paper:demszky-2020-goemotions",
+        "paper:keysar-2003-tom-limits",
+        "paper:chen-risen-2010-free-choice",
+        "paper:bardi-schwartz-2003-values-behavior"
+      ],
+      "architecture_decisions": [
+        "Represent motives and mental states only as bounded hypotheses that require owner confirmation for durable use."
+      ],
+      "confidence_rationale": "Prediction and observer labels do not establish hidden-state truth, and the corpus contains direct measurement and perspective limits."
+    },
+    {
+      "id": "claim:autonomous-posthumous-proxy",
+      "domain": "non_goal",
+      "claim": "A posthumous or autonomous replica can safely represent the person without a separate consent, authority, identity, and stewardship regime.",
+      "status": "speculative",
+      "supporting_paper_ids": [],
+      "contradicting_paper_ids": [
+        "paper:brubaker-2016-legacy-contact",
+        "paper:lu-2026-griefbot-perceptions",
+        "paper:longpre-2024-consent-crisis"
+      ],
+      "architecture_decisions": [
+        "Exclude autonomous or posthumous representation from the PoC and require explicit future governance before any such use."
+      ],
+      "confidence_rationale": "Current evidence identifies stewardship and perception risks but does not validate safe autonomous representation."
+    }
+  ]
+}

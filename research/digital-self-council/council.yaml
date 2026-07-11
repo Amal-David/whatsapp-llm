@@ -1,0 +1,168 @@
+schema_version: digital_self_council.v1
+title: Digital-Self Research Council
+objective: >-
+  Build a primary-source evidence base for representing a person from longitudinal
+  interactions, explicit self-report, and relationship context, then constrain a
+  local inspectable digital-brain proof of concept with that evidence.
+
+corpus:
+  minimum_counted_primary_papers: 100
+  target_counted_primary_papers: 150
+  maximum_counted_primary_papers: 200
+  seat_target_primary_papers: 18
+  final_records_require_cross_review: true
+  primary_source_types:
+    - journal
+    - conference
+    - workshop
+    - preprint
+  non_counted_theory_types:
+    - book
+    - chapter
+    - report
+    - thesis
+
+counting_rules:
+  - Count a preprint or its published version, never both.
+  - Require a canonical identifier or normalized title and year fallback.
+  - Require a verified HTTPS primary URL and enough metadata to identify the work.
+  - Do not count blogs, product pages, project documentation, or secondary explainers.
+  - Mark abstract-only and metadata-only inspection explicitly.
+  - Preserve negative, null, and contradictory results when relevant.
+
+quality_rubric:
+  evidence_strength:
+    foundational: Field-defining theory or repeatedly validated result.
+    strong: Direct, well-designed evidence with meaningful external validity.
+    moderate: Relevant empirical evidence with notable scope or design limits.
+    limited: Early, narrow, indirect, or weakly validated evidence.
+    theoretical: Formal or conceptual contribution without direct empirical validation.
+  relevance_score:
+    1: Peripheral context only.
+    2: Useful background with an indirect product implication.
+    3: Directly informs one model or evaluation choice.
+    4: Strongly constrains an architecture or safety decision.
+    5: Core evidence for the program design.
+  inspection_depth:
+    full_text: Full paper or accepted manuscript inspected.
+    abstract: Abstract and bibliographic metadata inspected.
+    metadata: Bibliographic metadata only; cannot support a strong finding claim.
+
+workflow:
+  phases:
+    - discover
+    - screen
+    - extract
+    - cross_review
+    - deduplicate
+    - synthesize
+    - verify
+  cross_review_policy: >-
+    Each seat reviews the next seat in the ring. A reviewer checks identifiers,
+    inspection depth, overclaiming, missing counterevidence, and architecture links.
+  private_data_policy: >-
+    Council agents use public research only and never access WhatsApp content,
+    generated owner profiles, pseudonym keys, or local message databases.
+
+seats:
+  - id: psychometrics
+    task_id: T-0402
+    title: Psychometrics and computational personality
+    owns:
+      - personality inference from language and behavioral traces
+      - trait-state separation and construct validity
+      - cross-context stability and confounding
+    excludes:
+      - clinical diagnosis
+      - protected-trait inference as a product capability
+    cross_review_seat: narrative_identity
+  - id: narrative_identity
+    task_id: T-0403
+    title: Autobiographical memory and narrative identity
+    owns:
+      - life stories, self-defining memories, and life periods
+      - self-continuity, reconstructive memory, and identity change
+      - narrative themes and owner elicitation
+    excludes:
+      - generic long-term memory engineering
+    cross_review_seat: cognitive_memory
+  - id: cognitive_memory
+    task_id: T-0404
+    title: Cognitive architectures and memory systems
+    owns:
+      - episodic, semantic, procedural, working, and prospective memory
+      - consolidation, retrieval, source memory, and forgetting
+      - cognitive architectures and metacognition
+    excludes:
+      - claims of machine consciousness or cognitive equivalence
+    cross_review_seat: persona_dialogue
+  - id: persona_dialogue
+    task_id: T-0405
+    title: Persona dialogue, character simulation, and roleplay
+    owns:
+      - persona-conditioned generation and long-horizon consistency
+      - roleplay agents, character modeling, and persona drift
+      - prompting, retrieval, tuning, and graph comparisons
+    excludes:
+      - deceptive impersonation objectives
+    cross_review_seat: social_relationships
+  - id: social_relationships
+    task_id: T-0406
+    title: Social identity and relationship-conditioned behavior
+    owns:
+      - relational selves, roles, audience design, and accommodation
+      - self-presentation, disclosure, and context collapse
+      - relationship-scoped behavior and information boundaries
+    excludes:
+      - contact traits inferred without consent
+    cross_review_seat: longitudinal_modeling
+  - id: longitudinal_modeling
+    task_id: T-0407
+    title: Longitudinal personalization and continual user modeling
+    owns:
+      - preference drift and temporal user models
+      - continual adaptation, active elicitation, and owner correction
+      - catastrophic forgetting and update policies
+    excludes:
+      - unversioned silent profile mutation
+    cross_review_seat: values_decisions_emotion
+  - id: values_decisions_emotion
+    task_id: T-0408
+    title: Values, decisions, emotion, goals, and theory of mind
+    owns:
+      - value and goal hierarchies
+      - decision policies, appraisal, affect, and emotion dynamics
+      - theory of mind and motive uncertainty
+    excludes:
+      - clinical psychological profiling
+    cross_review_seat: evaluation_fidelity
+  - id: evaluation_fidelity
+    task_id: T-0409
+    title: Authenticity and behavioral-fidelity evaluation
+    owns:
+      - user-simulation and roleplay evaluation
+      - owner judgments, predictive validity, calibration, and reliability
+      - memorization, leakage, relationship, and temporal benchmarks
+    excludes:
+      - treating one automatic metric as proof of person replication
+    cross_review_seat: privacy_identity_safety
+  - id: privacy_identity_safety
+    task_id: T-0410
+    title: Privacy, consent, identity rights, and replica safety
+    owns:
+      - consent, sensitive inference, third-party privacy, and data governance
+      - identity, likeness, impersonation, and digital remains
+      - technical controls and normative requirements
+    excludes:
+      - jurisdiction-specific legal conclusions without qualified sources
+    cross_review_seat: digital_twins_agents
+  - id: digital_twins_agents
+    task_id: T-0411
+    title: Digital twins, lifelogging, and personal-agent systems
+    owns:
+      - lifelog retrieval and personal digital twins
+      - memory agents, generative agents, and user simulators
+      - integrated architectures, update loops, and operational failure modes
+    excludes:
+      - project marketing claims without primary evaluation evidence
+    cross_review_seat: psychometrics
