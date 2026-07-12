@@ -1,76 +1,36 @@
 # Digital Self
 
-An experimental, local WhatsApp LLM toolkit for exploring what authorized
-conversations can teach a model about one person's writing style, memories, and
-relationship-specific behavior.
+An experimental, local-first toolkit for building inspectable representations
+of one person from authorized WhatsApp conversations.
 
-This project does not reconstruct a person or a mind. It builds reviewable
-artifacts from selected evidence, keeps uncertainty visible, and leaves the
-owner in control of corrections and judgment.
+The project explores two scopes:
 
-The installed package and CLI command remain `living-brain` for compatibility.
-That is a technical identifier, not the product claim.
+| Approach | Input | Result |
+| --- | --- | --- |
+| **Mini-Me** | One selected person's messages, usually from one chat | A relationship-scoped writing-style dataset with held-out evaluation |
+| **Digital Self** | Owner messages across several selected chats, plus an optional interview | A versioned profile with evidence, time, uncertainty, relationships, and optional typed state |
 
-## Choose An Approach
+Neither approach reconstructs a person or a mind. The output is an experimental
+model of selected evidence that the owner must inspect, correct, and judge.
 
-| Approach | Start with | What it builds | Best for |
-| --- | --- | --- | --- |
-| **Mini-Me** | One person's messages, usually from one selected chat | Style examples, prompt cards, training rows, preference pairs, and held-out evaluations | Learning how someone tends to write in a particular conversational setting |
-| **Digital Self** | The owner's messages across multiple selected chats, plus an optional owner interview | A versioned identity profile with evidence, time, uncertainty, relationship context, memory, and optional typed state | Exploring a broader, still incomplete representation across relationships and time |
+The installed command remains `living-brain` for compatibility.
 
-Mini-Me is the playful, narrow path. Digital Self is the broader research path.
-Neither is a complete replica, and adding more chats does not automatically make
-the result more truthful. Read the
-[`Digital Self explainer`](docs/digital-self-explainer.md) for the complete
-extraction, conversion, training, and evaluation flow.
+## Current State
 
-## What It Does
+The repository currently supports:
 
-- Parse WhatsApp `.txt` exports across common date formats.
-- Read selected chats directly from WhatsApp for Mac or a local `wacli` mirror.
-- Build a versioned self model with provenance, confidence, validity windows,
-  contradictions, and owner confirmation.
-- Reproduce a ten-seat, 187-paper research council for human representation.
-- Exercise a typed, versioned self-model PoC with coverage, correction,
-  deliberation, and hard-gated evaluation.
-- Keep global identity separate from relationship-specific communication style.
-- Evaluate profile-only and retrieval-backed behavior on held-out chats and
-  explicit interview retests.
-- Analyze per-person writing style, emoji use, punctuation, and message length.
-- Build consented persona datasets for one selected participant.
-- Export SFT, DPO, eval, style capsule, and character-card artifacts.
-- Recommend prompt, RAG, QLoRA SFT, DPO, KTO, ORPO, and DRPO paths.
-- Analyze small pasted samples when a full chat export is unavailable.
-- Detect code-switching signals and paralinguistic cues.
-- Suggest low-data augmentation recipes with synthetic provenance labels.
-- Store episodic memories in ChromaDB and facts in a local knowledge graph.
-- Run a local chat UI with adapters, GGUF models, RAG, and facts.
+- read-only chat discovery and ingestion from WhatsApp for Mac
+- ingestion from a local third-party `wacli` linked-device mirror
+- explicit chat selection, stable pseudonyms, and owner interviews
+- `digital_self.v1` profiles with evidence hashes, provenance, confidence,
+  temporal validity, contradictions, and relationship-specific style
+- private held-out evaluation rows and separate text-free summaries
+- migration to typed state with coverage, correction, scoped simulation, and
+  independent evaluation axes
+- a deterministic synthetic walkthrough that writes 12 auditable artifacts
+- a narrow Mini-Me workbench for consented, single-person style datasets
 
-The project is designed for authorized drafting and research workflows. It is
-not designed for deceptive impersonation or detector evasion.
-
-## Feature Map
-
-| Area | Features |
-| --- | --- |
-| WhatsApp parsing | Participant discovery, conversation splitting, system/media filtering, JSONL export |
-| Digital self | Guided owner interview, read-only multi-chat sources, versioned claims, temporal validity |
-| Research council | Ten bounded seats, independent cross-review, 187 unique papers, evidence map, synthesis |
-| Typed self PoC | Twelve typed state layers, deterministic migration, consolidation, simulation, correction |
-| Relationships | Pseudonymous per-chat style deltas without treating contacts' words as owner identity |
-| Style analysis | Length, emoji, punctuation, capitalization, common phrases, response behavior |
-| Dataset workbench | Gradio UI, participant picker, consent gate, ZIP artifact download |
-| Training data | Canonical rows, Alpaca SFT, chat-message SFT, TRL DPO, OpenAI DPO, eval JSONL |
-| Recommendations | Prompt card, RAG memory, QLoRA SFT, DPO/KTO, synthetic augmentation, holdout checks |
-| Sample text | Method ranking, what works, gaps, style card JSON, prompt snippet, export JSON |
-| Authenticity cues | Laughter, ellipsis, emoji, repeated punctuation, elongation, lowercase starts, all-caps, particles |
-| Code-switching | Script mix, romanized markers, switch rate, generation rules |
-| Character files | Canonical character JSON, Character Card v2, persona Markdown |
-| Memory | ChromaDB vector store, fact extraction, recency retrieval, memory consolidation |
-| Inference | Lazy orchestrator, transformers or llama.cpp GGUF, Gradio chat |
-| Safety | Consent checks, PII redaction, third-party context controls, no raw shared quotes by default |
-
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/Amal-David/whatsapp-llm
@@ -78,34 +38,15 @@ cd whatsapp-llm
 pip install -e .
 ```
 
-Install optional feature groups as needed:
+## Build A Multi-Chat Digital Self
+
+List available chats without printing message bodies:
 
 ```bash
-pip install -e ".[chat]"
-pip install -e ".[core]"
-pip install -e ".[train-compat]"
-pip install -e ".[inference-gguf]"
-pip install -e ".[watch]"
-pip install -e ".[all]"
+living-brain self chats --source whatsapp-mac
 ```
 
-Use `.[train]` only when you want the Unsloth-backed training stack.
-
-## Multi-Chat Digital Self
-
-The recommended architecture is layered:
-
-1. **Source events:** selected local messages remain the auditable evidence base.
-2. **Identity:** owner-confirmed interview claims and clearly labeled behavioral
-   candidates live in a versioned profile.
-3. **Memory:** relevant events are retrieved by owner, source, relationship, and
-   point in time.
-4. **Relationship context:** communication style can vary by relationship without
-   flattening everyone into one average voice.
-5. **Optional tuning:** a LoRA adapter may improve surface style later, but it is
-   never the source of truth for values, preferences, or current facts.
-
-Create and complete the private owner interview:
+Create a private owner interview:
 
 ```bash
 living-brain self interview \
@@ -113,30 +54,13 @@ living-brain self interview \
   --output ./private/self-interview.yaml
 ```
 
-List chats from WhatsApp for Mac. This opens the local database in SQLite
-read-only mode and does not print message bodies:
-
-```bash
-living-brain self chats --source whatsapp-mac
-```
-
-The native Mac schema is private and may change between WhatsApp releases. For
-a more stable linked-device mirror, point the same commands at the third-party
-[`wacli`](https://github.com/steipete/wacli) SQLite store:
-
-```bash
-living-brain self chats \
-  --source wacli \
-  --path ~/.wacli/wacli.db
-```
-
-Build from several explicitly selected source chat IDs:
+Build and validate a profile from explicitly selected chats:
 
 ```bash
 living-brain self build \
   --source whatsapp-mac \
-  --chat "first-source-chat-id" \
-  --chat "second-source-chat-id" \
+  --chat "first-chat-id" \
+  --chat "second-chat-id" \
   --owner-name "Your Name" \
   --interview ./private/self-interview.yaml \
   --output ./private/digital-self.json
@@ -144,396 +68,102 @@ living-brain self build \
 living-brain self validate ./private/digital-self.json
 ```
 
-Use `--all-chats` only after reviewing the source list. A stable pseudonym key is
-created at `~/.config/living-brain/pseudonym.key` by default; use `--key-file`
-to place it elsewhere. The profile contains owner-message hashes and aggregate
-style metrics, not owner message bodies. Third-party text is excluded unless
-`--include-third-party-context` is explicitly supplied, and even then it cannot
-support identity claims.
+Use `--all-chats` only after reviewing the source list. To use a `wacli` mirror,
+pass `--source wacli --path ~/.wacli/wacli.db`. The `self evaluate` command
+creates private held-out rows and a separate text-free summary.
 
-Export the private held-out evaluation suite and a separate text-free summary:
+## Build A Mini-Me
 
-```bash
-living-brain self evaluate \
-  --source whatsapp-mac \
-  --chat "first-source-chat-id" \
-  --chat "second-source-chat-id" \
-  --owner-name "Your Name" \
-  --interview ./private/self-interview.yaml \
-  --profile ./private/digital-self.json \
-  --output ./private/self-evaluation.json \
-  --summary-output ./private/self-evaluation-summary.json
-```
-
-The private suite may contain held-out contact prompts and owner replies. It is
-written with owner-only permissions. The summary contains counts and coverage
-only, so it can be inspected without reproducing dialogue.
-
-## Typed Self Proof Of Concept
-
-The research-backed v2 PoC treats the canonical model as typed, versioned state
-with provenance, confidence, time, sensitivity, ownership, and context scope. It
-does not treat an LLM, vector index, prompt, or style adapter as the person.
-
-Run the complete workflow on synthetic data only:
-
-```bash
-living-brain brain guide \
-  --demo \
-  --workspace ./private/brain-demo \
-  --as-of 2026-07-11T12:00:00+00:00
-```
-
-The command performs source selection, coverage analysis, adaptive interview,
-versioned build, inspection, owner correction, grounded simulation, and eight-axis
-evaluation without reading WhatsApp or calling an external model. Reopen the final
-state with `living-brain brain coverage` or `living-brain brain inspect`.
-
-The evidence snapshot contains 200 reviewed seat records and 187 unique papers
-after deduplication: 100 full-text and 87 abstract inspections. Start with the
-[`research council`](research/digital-self-council/README.md), the
-[`integrated synthesis`](research/digital-self-council/synthesis.md), and the
-[`implementation and verification guide`](docs/digital-brain-poc.md).
-
-This remains a bounded proof of concept, not a complete human replica. Real local
-sources currently build `digital_self.v1` first and migrate with
-`living-brain brain migrate`; automated event-to-state extraction, complete
-deletion propagation, and autonomous representation are intentionally absent.
-
-## Mini-Me Quick Start
-
-Mini-Me is the export-based path for learning one selected person's
-conversational style. It produces a portable style dataset or fine-tuning
-artifact, not a global identity model.
-
-Export a WhatsApp chat as text:
-
-1. Open a WhatsApp chat.
-2. Choose **Export Chat**.
-3. Export **Without Media**.
-4. Save the `.txt` file locally.
-
-Parse and inspect the chat:
-
-```bash
-living-brain parse chat.txt --your-name "Your Name" --output processed
-```
-
-Slash dates use month/day order by default. For exports that use day/month
-order, pass `--date-order dmy`.
-
-This writes:
-
-- `processed.json` with style metrics.
-- `processed.jsonl` with parsed messages.
-
-Launch the persona dataset workbench:
+Mini-Me is the narrower workflow for learning how one selected person tends to
+write in a particular conversational setting.
 
 ```bash
 living-brain workbench --port 7861
 ```
 
-Open the local URL, upload the `.txt` export, choose a participant, confirm
-consent, and download the generated ZIP. Other participants' messages are
-withheld by default; including them requires a separate permission confirmation.
+Upload an authorized WhatsApp text export, select the participant, confirm
+consent, and review the generated archive. The workbench produces canonical
+examples, style summaries, training-ready rows, preference pairs, and held-out
+evaluation rows. Third-party messages are withheld by default.
 
-## Dataset Workbench
+Treat the result as relationship-scoped unless evidence from other chats shows
+that the same behavior generalizes.
 
-The workbench has two tabs.
+## Inspect The Typed-State Workflow
 
-### WhatsApp Export
-
-Use this when you have a full chat export.
-
-It produces:
-
-- `summary.json`
-- `canonical_examples.jsonl`
-- `sft_alpaca.jsonl`
-- `sft_messages.jsonl`
-- `dpo_trl.jsonl`
-- `dpo_openai.jsonl`
-- `eval.jsonl`
-- `style_capsule.json`
-- `canonical_character.json`
-- `character_card_v2.json`
-- `persona.md`
-- `recommendation.md`
-
-The canonical rows preserve source metadata, context, target replies, privacy
-redactions, quality labels, splits, and synthetic flags. SFT rows use observed
-target replies. DPO rows pair the observed reply with a labeled synthetic
-negative, such as a too-formal variant. Splits are assigned by whole conversation:
-SFT and DPO files contain training rows only, while `eval.jsonl` contains only
-available validation and test rows. Small imports without enough conversation
-groups intentionally produce no held-out rows.
-
-Character-card and persona exports contain aggregate style descriptions, not
-source dialogue, catchphrases, or other participants' display names.
-
-### Sample Text
-
-Use this when you only have pasted messages or a small sample.
-
-It returns:
-
-- A ranked method recommendation.
-- What works in the sample.
-- Authenticity gaps.
-- Code-switching guidance.
-- Paralinguistic tag inventory.
-- Low-data augmentation recipes.
-- Generation constraints.
-- Evaluation checks.
-- A style card JSON object.
-- A prompt snippet for immediate drafting.
-
-The recommender is deliberately conservative:
-
-| Data available | Default path |
-| --- | --- |
-| Under 20 messages | Prompt card plus manual examples |
-| 20-99 messages | Prompt card plus retrieved exemplars |
-| 100-499 messages | RAG persona memory |
-| 500-1,999 messages | QLoRA SFT candidate with strict holdout |
-| 2,000+ messages | QLoRA SFT, then preference tuning if labels exist |
-
-## Fine-Tuning Paths
-
-Use the generated artifacts according to your data volume and labels.
-
-| Method | Input | Use When |
-| --- | --- | --- |
-| Prompt card | Style card and examples | Any small import or first prototype |
-| RAG persona memory | Retrieved examples and context | You have 100+ target messages |
-| SFT / QLoRA | Target replies with context | You have 500+ clean target replies |
-| DPO / ORPO | Chosen and rejected pairs | You have pairwise preference examples |
-| KTO | Desirable and undesirable labels | You have unary thumbs-up/down feedback |
-| DRPO-style robust tuning | Preference rows with subgroup metadata | You have large shifted datasets |
-| GRPO / RL | Rollouts and verifiable rewards | Avoid for normal conversational style |
-
-The research notes and ranking are in
-[`docs/persona-methods-study.md`](docs/persona-methods-study.md). The source
-corpus is in
-[`docs/persona-authenticity-source-corpus.jsonl`](docs/persona-authenticity-source-corpus.jsonl).
-
-## Train A Style Adapter
-
-Create training rows from a chat and train a LoRA adapter:
+Run the complete deterministic walkthrough with synthetic data only:
 
 ```bash
-living-brain train chat.txt \
-  --your-name "Your Name" \
-  --model llama-3.2-3b \
-  --output ./models/my_style
+living-brain brain guide \
+  --demo \
+  --workspace ./private/digital-self-demo \
+  --as-of 2026-07-11T12:00:00+00:00
 ```
 
-Supported model aliases include:
+The walkthrough performs source selection, initial state creation, coverage
+analysis, adaptive interview, versioning, inspection, owner correction,
+simulation, and evaluation. It reads no WhatsApp data and calls no external
+model.
 
-- `llama-3.2-1b`
-- `llama-3.2-3b`
-- `qwen-2.5-3b`
-- `qwen-2.5-7b`
-- `llama-3.1-8b`
-- `mistral-7b`
+The 12 generated files are workflow stages and receipts, not 12 models or a
+single replica score. Their exact purpose is documented in the
+[`Digital Self explainer`](docs/digital-self-explainer.md).
 
-Export a GGUF model when needed:
+## Evidence And Evaluation
 
-```bash
-living-brain train chat.txt \
-  --your-name "Your Name" \
-  --model llama-3.2-3b \
-  --output ./models/my_style \
-  --export-gguf
-```
+The owner selects local sources. The system normalizes messages, separates owner
+evidence from third-party context, and records provenance. Observed behavior
+remains a candidate rather than a fact; claims and style stay scoped by time and
+relationship.
 
-## Memory And Chat
+Owner message bodies are not copied into the portable `digital_self.v1` profile.
+The profile stores hashes, aggregates, provenance, and relationship-safe
+metadata. Private evaluation rows may contain conversation text and are written
+with owner-only permissions; their summary contains counts and coverage only.
 
-Create a config file:
+Mini-Me checks held-out replies for style, context, privacy, invention, and
+memorization. The typed-state evaluator separately checks behavior, time,
+relationships, attribution, decisions, calibration, privacy, authority, and
+explicit owner judgment. Privacy failures block a pass. There is no single
+"percent cloned" score.
 
-```bash
-cp config.example.yaml config.yaml
-```
+## Limits
 
-Ingest conversations into memory:
+- WhatsApp conversations are partial, relationship-specific evidence, and the
+  Mac app uses a private schema that may change.
+- `wacli` is a third-party linked-device mirror, not an official WhatsApp API or
+  a guaranteed complete archive.
+- Automatic raw-message-to-typed-state extraction and complete deletion
+  propagation are not finished.
+- The synthetic walkthrough proves software contracts, not real-person fidelity.
+- The project has no authority to send, promise, transact, or represent the
+  owner.
 
-```bash
-living-brain ingest chat.txt --your-name "Your Name" --extract-facts
-```
+Keep raw chats, pseudonym keys, interviews, profiles, evaluation rows, and typed
+state snapshots private and out of source control.
 
-Launch chat with an adapter:
+## Documentation
 
-```bash
-living-brain chat --adapter my_style
-```
-
-Launch chat with a GGUF model:
-
-```bash
-living-brain chat --gguf ./models/my_style.gguf
-```
-
-Watch a directory for new exports:
-
-```bash
-living-brain watch ./exports --your-name "Your Name" --extract-facts
-```
-
-Show local memory, facts, and adapter counts:
-
-```bash
-living-brain stats
-```
-
-The orchestrator loads memory stores lazily, so GGUF-only workflows can start
-without ChromaDB until memory features are used.
-
-Conversation memories are stored as overlapping chunks using the configured
-`chunk_size` and `chunk_overlap`. Retrieved memories and facts are escaped,
-bounded by `max_context_chars` and `max_facts`, and presented to the model as
-untrusted historical data rather than instructions.
-
-## Python API
-
-```python
-from living_brain.core.config import Config
-from living_brain.inference.orchestrator import Orchestrator
-
-config = Config(persona_name="Alice")
-orchestrator = Orchestrator(
-    config=config,
-    profile_path="private/digital-self.json",
-    adapter_name="alice_style",  # Optional surface-style layer.
-)
-
-orchestrator.load_model()
-print(orchestrator.chat("hey, are we still on for later?"))
-
-orchestrator.add_to_memory("We planned to meet at 7 near the cafe.")
-```
-
-Build dataset artifacts directly:
-
-```python
-from living_brain.ingest.persona_dataset import PersonaDatasetBuilder
-
-builder = PersonaDatasetBuilder(context_turns=6)
-result = builder.build_from_file("chat.txt", participant="Alice", owner_type="self")
-builder.write_artifacts(result, "out/alice")
-```
-
-Analyze pasted sample text:
-
-```python
-from living_brain.ingest.sample_recommender import SampleTextRecommender
-
-recommendation = SampleTextRecommender().recommend(
-    sample_text="haan wait lol\nI can come after 7...",
-    target_message_count=42,
-    persona_name="Alice",
-)
-
-print(recommendation.to_markdown())
-```
-
-## Project Structure
-
-```text
-living_brain/
-  brain/         typed state, migration, consolidation, simulation, evaluation
-  core/          configuration
-  identity/      self model, interviews, read-only sources, prompt, evaluation
-  ingest/        WhatsApp parsing, style analysis, dataset builders
-  inference/     Gradio chat, dataset UI, orchestrator
-  memory/        ChromaDB store, facts, retrieval, consolidation
-  research/      corpus validation, council orchestration, evidence-map checks
-  style/         dataset formatting, adapter training, adapter management
-  main.py        CLI entry point
-docs/
-  digital-self-explainer.md
-  digital-brain-poc.md
-  persona-methods-study.md
-  persona-authenticity-source-corpus.jsonl
-research/
-  digital-self-council/  public paper corpus, reviews, synthesis, manifest
-tests/
-  test_pr_review_regressions.py
-```
-
-## Privacy And Safety
-
-- Use the workbench only for your own messages, an organization voice you manage,
-  or someone who gave explicit consent.
-- Keep raw WhatsApp exports local.
-- Treat the native WhatsApp Mac reader as version-sensitive and verify its schema
-  after app upgrades.
-- Treat `wacli` as a third-party linked device with best-effort history, not an
-  official WhatsApp API or guaranteed complete archive.
-- Keep the pseudonym key, interview, profile, and private evaluation suite out of
-  source control.
-- Treat generated state snapshots, guided-run artifacts, and council runtime
-  directories as private local data; only the public research corpus is committed.
-- State snapshots can contain authorized owner evidence payloads. Use the redacted
-  inspection command for review; do not treat the canonical JSON as a safe export.
-- Leave third-party context disabled unless every included participant gave permission.
-- Review every generated dataset before training.
-- Treat synthetic rows as synthetic.
-- Do not train SFT on unreviewed synthetic replies as if they were real messages.
-- Keep held-out real replies for distribution and memorization checks.
-- Do not invent private facts.
-- Label AI-assisted drafts when they leave private testing.
-- Never grant generated output authority to send, promise, transact, or represent
-  the owner. High-stakes or under-supported cases require the owner.
-
-Core parsing and dataset generation do not require external APIs.
+- [`Digital Self explainer`](docs/digital-self-explainer.md): extraction,
+  conversion, Mini-Me artifacts, evaluation, and the 12 guided-run files
+- [`Typed Digital Self PoC`](docs/digital-brain-poc.md): schemas, migration,
+  correction, simulation, and verification
+- [`Research synthesis`](research/digital-self-council/synthesis.md): evidence,
+  constraints, architecture, and non-goals
+- [`Research council README`](research/digital-self-council/README.md): corpus
+  structure and reproducibility workflow
 
 ## Development
 
-Install development dependencies:
-
 ```bash
 pip install -e ".[dev]"
-```
-
-Run the regression tests:
-
-```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest tests -q -o addopts=''
-```
-
-Compile every supported import path:
-
-```bash
 python -m compileall -q living_brain tests
 ```
 
-CI runs the regression suite, CLI smoke tests, and focused Ruff/mypy checks on
-Python 3.10, 3.11, and 3.12. Generated workbench downloads are kept in a private
-temporary directory and removed when the workbench is cleaned up or exits.
-
-Run the focused lint checks locally:
-
-```bash
-uvx ruff check tests \
-  living_brain/brain \
-  living_brain/core/config.py \
-  living_brain/identity \
-  living_brain/inference/chat.py \
-  living_brain/inference/dataset_ui.py \
-  living_brain/inference/orchestrator.py \
-  living_brain/ingest/persona_dataset.py \
-  living_brain/ingest/sample_recommender.py \
-  living_brain/ingest/style_analyzer.py \
-  living_brain/ingest/watcher.py \
-  living_brain/ingest/whatsapp_parser.py \
-  living_brain/main.py \
-  living_brain/memory/fact_store.py \
-  living_brain/memory/retriever.py \
-  living_brain/memory/vector_store.py \
-  living_brain/research \
-  living_brain/style/trainer.py
-```
+CI runs tests, compilation, CLI smoke checks, package builds, Ruff, and mypy on
+Python 3.10, 3.11, and 3.12.
 
 ## License
 
-MIT License. See [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).
