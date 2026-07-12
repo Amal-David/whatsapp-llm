@@ -29,7 +29,7 @@ body {
 a { color: inherit; text-decoration: none; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
 img { display: block; max-width: 100%; }
-code { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 
 .skip-link {
   position: fixed;
