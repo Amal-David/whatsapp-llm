@@ -5,17 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "living-brain"
 version = "0.1.0"
-description = "Local WhatsApp persona dataset, character-file, fine-tuning, and memory workbench"
+description = "Local-first toolkit for evidence-grounded Digital Self experiments from authorized WhatsApp data"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Living Brain Contributors"}
+    {name = "Digital Self Contributors"}
 ]
 keywords = [
-    "ai", "llm", "fine-tuning", "personal-assistant", "whatsapp",
-    "lora", "rag", "memory", "chatbot", "persona", "dpo",
-    "qlora", "character-card"
+    "ai", "llm", "digital-self", "whatsapp", "identity-modeling",
+    "privacy", "provenance", "temporal-reasoning", "relationship-context",
+    "evaluation", "local-first"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
