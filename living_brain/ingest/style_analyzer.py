@@ -2,12 +2,11 @@
 Style analyzer for extracting personal writing style metrics.
 """
 
-import re
 import json
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from .whatsapp_parser import ChatMessage
 
@@ -24,7 +23,7 @@ class StyleMetrics:
     capitalization_rate: float = 0.0
     punctuation_patterns: dict[str, float] = field(default_factory=dict)
     common_phrases: list[tuple[str, int]] = field(default_factory=list)
-    response_time_avg_minutes: Optional[float] = None
+    response_time_avg_minutes: float | None = None
     message_count: int = 0
     vocabulary_size: int = 0
     avg_words_per_message: float = 0.0
@@ -52,7 +51,7 @@ class StyleMetrics:
 
     @classmethod
     def load(cls, path: str | Path) -> "StyleMetrics":
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = json.load(f)
         return cls(**data)
 
@@ -106,7 +105,8 @@ class StyleMetrics:
         # Common phrases
         if self.common_phrases:
             phrases = [p for p, _ in self.common_phrases[:3]]
-            lines.append(f"- Common expressions: \"{'\", \"'.join(phrases)}\"")
+            phrase_list = '", "'.join(phrases)
+            lines.append(f'- Common expressions: "{phrase_list}"')
 
         lines.append("\nMimic this style while maintaining natural conversation flow.")
         return "\n".join(lines)
@@ -184,13 +184,13 @@ class StyleAnalyzer:
         avg_words = sum(word_counts) / total
 
         # Vocabulary
-        all_words = set()
+        all_words: set[str] = set()
         for t in texts:
             all_words.update(w.lower() for w in re.findall(r'\b\w+\b', t))
         vocab_size = len(all_words)
 
         # Emoji analysis
-        emoji_counter = Counter()
+        emoji_counter: Counter[str] = Counter()
         emoji_msg_count = 0
         for t in texts:
             emojis = self.EMOJI_PATTERN.findall(t)
@@ -201,7 +201,7 @@ class StyleAnalyzer:
         top_emojis = emoji_counter.most_common(10)
 
         # Slang analysis
-        slang_counter = Counter()
+        slang_counter: Counter[str] = Counter()
         slang_msg_count = 0
         for t in texts:
             matches = self._slang_pattern.findall(t.lower())
@@ -216,7 +216,7 @@ class StyleAnalyzer:
         cap_rate = cap_count / total
 
         # Punctuation patterns
-        punct_counts = defaultdict(int)
+        punct_counts: defaultdict[str, int] = defaultdict(int)
         for t in texts:
             if t.endswith('!'):
                 punct_counts['!'] += 1
@@ -233,7 +233,7 @@ class StyleAnalyzer:
         punct_patterns = {k: v / total for k, v in punct_counts.items()}
 
         # Common phrases (2-grams and 3-grams)
-        ngram_counter = Counter()
+        ngram_counter: Counter[str] = Counter()
         for t in texts:
             words = t.lower().split()
             # 2-grams

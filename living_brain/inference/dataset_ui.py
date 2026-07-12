@@ -24,6 +24,11 @@ class DatasetWorkbench:
 
     def __init__(self, title: str = "Persona Dataset Workbench"):
         self.title = title
+        self._temp_dir = tempfile.TemporaryDirectory(prefix="whatsapp_llm_workbench_")
+
+    def cleanup_temp_files(self) -> None:
+        """Delete generated artifacts containing private conversation data."""
+        self._temp_dir.cleanup()
 
     def _upload_path(self, upload: Any) -> Path:
         if upload is None:
@@ -64,6 +69,7 @@ class DatasetWorkbench:
         owner_type: str,
         consent_confirmed: bool,
         include_third_party_context: bool,
+        third_party_consent_confirmed: bool,
         context_turns: int,
         gap_minutes: int,
     ):
@@ -74,6 +80,10 @@ class DatasetWorkbench:
                 )
             if not participant:
                 raise ValueError("Choose a participant first.")
+            if include_third_party_context and not third_party_consent_confirmed:
+                raise ValueError(
+                    "Confirm that you have permission to use other participants' messages."
+                )
 
             path = self._upload_path(upload)
             builder = PersonaDatasetBuilder(
@@ -131,6 +141,7 @@ class DatasetWorkbench:
             prefix=f"{result.participant.replace(' ', '_')}_persona_",
             suffix=".zip",
             delete=False,
+            dir=self._temp_dir.name,
         )
         temp.close()
         with zipfile.ZipFile(temp.name, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -145,6 +156,7 @@ class DatasetWorkbench:
             delete=False,
             mode="w",
             encoding="utf-8",
+            dir=self._temp_dir.name,
         )
         with temp:
             temp.write(recommendation.to_json())
@@ -202,7 +214,11 @@ class DatasetWorkbench:
                         )
                         include_third_party_context = gr.Checkbox(
                             label="Include other participants as context",
-                            value=True,
+                            value=False,
+                        )
+                        third_party_consent_confirmed = gr.Checkbox(
+                            label="I have permission to use other participants' messages.",
+                            value=False,
                         )
 
                     with gr.Row():
@@ -236,6 +252,7 @@ class DatasetWorkbench:
                             owner_type,
                             consent_confirmed,
                             include_third_party_context,
+                            third_party_consent_confirmed,
                             context_turns,
                             gap_minutes,
                         ],

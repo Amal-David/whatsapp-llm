@@ -4,10 +4,13 @@ Orchestrator that combines style, memory, and facts for inference.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from ..core.config import Config
+from ..identity.models import DigitalSelfProfile
+from ..identity.prompt import DigitalSelfPromptBuilder
 from ..ingest.style_analyzer import StyleMetrics
 from ..memory.fact_store import FactStore
 from ..memory.retriever import MemoryRetriever, RetrievalResult
@@ -40,6 +43,8 @@ class Orchestrator:
         adapter_name: str | None = None,
         use_gguf: bool = False,
         gguf_path: str | None = None,
+        digital_self_profile: DigitalSelfProfile | None = None,
+        profile_path: str | Path | None = None,
     ):
         """
         Initialize the orchestrator.
@@ -49,11 +54,19 @@ class Orchestrator:
             adapter_name: Name of the LoRA adapter to use
             use_gguf: Whether to use a GGUF model via llama.cpp
             gguf_path: Path to GGUF model file
+            digital_self_profile: An already loaded digital-self profile
+            profile_path: Path to a serialized digital-self profile
         """
+        if digital_self_profile is not None and profile_path is not None:
+            raise ValueError("provide digital_self_profile or profile_path, not both")
+
         self.config = config or Config()
         self.adapter_name = adapter_name
         self.use_gguf = use_gguf
         self.gguf_path = gguf_path
+        self.digital_self_profile = digital_self_profile
+        if profile_path is not None:
+            self.digital_self_profile = DigitalSelfProfile.load(profile_path)
 
         # Memory is initialized lazily so GGUF or prompt-only flows can run
         # without the optional ChromaDB dependency.
@@ -70,12 +83,20 @@ class Orchestrator:
         self.style_metrics: StyleMetrics | None = None
 
         # Model (lazy loaded)
-        self._model = None
-        self._tokenizer = None
-        self._llama_model = None  # For GGUF
+        self._model: Any | None = None
+        self._tokenizer: Any | None = None
+        self._llama_model: Any | None = None  # For GGUF
 
         # Conversation history
         self._history: list[dict] = []
+
+    def _get_fact_store(self) -> FactStore:
+        """Load the lightweight fact store without requiring ChromaDB."""
+        if self.fact_store is None:
+            self.fact_store = FactStore(
+                facts_path=self.config.facts.facts_path,
+            )
+        return self.fact_store
 
     def _get_retriever(self) -> MemoryRetriever:
         """Lazy load memory stores only when memory or facts are requested."""
@@ -85,13 +106,12 @@ class Orchestrator:
                 collection_name=self.config.memory.collection_name,
                 embedding_model=self.config.model.embedding_model,
             )
-            self.fact_store = FactStore(
-                facts_path=self.config.facts.facts_path,
-            )
             self.retriever = MemoryRetriever(
                 vector_store=self.vector_store,
-                fact_store=self.fact_store,
+                fact_store=self._get_fact_store(),
                 top_k_memories=self.config.memory.top_k_retrieval,
+                max_context_chars=self.config.memory.max_context_chars,
+                max_facts=self.config.memory.max_facts,
             )
         return self.retriever
 
@@ -106,8 +126,18 @@ class Orchestrator:
                 except Exception as e:
                     logger.warning(f"Could not load style metrics: {e}")
 
-    def _get_system_prompt(self) -> str:
+    def _get_system_prompt(
+        self,
+        as_of: datetime | None = None,
+        relationship_id: str | None = None,
+    ) -> str:
         """Generate the system prompt."""
+        if self.digital_self_profile is not None:
+            return DigitalSelfPromptBuilder(self.digital_self_profile).render(
+                as_of=as_of,
+                relationship_id=relationship_id,
+            )
+
         parts = [f"You are {self.config.persona_name}."]
 
         if self.style_metrics:
@@ -202,9 +232,15 @@ class Orchestrator:
         self,
         message: str,
         retrieval: RetrievalResult | None = None,
+        *,
+        as_of: datetime | None = None,
+        relationship_id: str | None = None,
     ) -> str:
         """Format the prompt with context and history."""
-        system = self._get_system_prompt()
+        system = self._get_system_prompt(
+            as_of=as_of,
+            relationship_id=relationship_id,
+        )
 
         # Add memory context if available
         if retrieval and retrieval.context_text:
@@ -262,6 +298,10 @@ class Orchestrator:
         use_facts: bool = True,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        relationship_id: str | None = None,
+        as_of: datetime | None = None,
+        source: str | None = None,
+        after: datetime | None = None,
     ) -> GenerationResult:
         """
         Generate a response to a message.
@@ -272,6 +312,10 @@ class Orchestrator:
             use_facts: Whether to include facts
             temperature: Override temperature
             max_tokens: Override max tokens
+            relationship_id: Optional relationship scope for profile and memory
+            as_of: Render and retrieve only information current at this time
+            source: Optional memory source scope
+            after: Exclude memories older than this time
 
         Returns:
             GenerationResult with the response and metadata
@@ -279,6 +323,9 @@ class Orchestrator:
         import time
 
         start_time = time.time()
+        effective_as_of = as_of
+        if self.digital_self_profile is not None and effective_as_of is None:
+            effective_as_of = datetime.now(timezone.utc)
 
         # Retrieve context
         retrieval = None
@@ -287,10 +334,24 @@ class Orchestrator:
                 query=message,
                 include_facts=use_facts,
                 include_memories=use_memory,
+                owner_id=(
+                    self.digital_self_profile.owner_id
+                    if self.digital_self_profile is not None
+                    else None
+                ),
+                source=source,
+                relationship_id=relationship_id,
+                as_of=effective_as_of,
+                after=after,
             )
 
         # Format prompt
-        prompt = self._format_prompt(message, retrieval)
+        prompt = self._format_prompt(
+            message,
+            retrieval,
+            as_of=effective_as_of,
+            relationship_id=relationship_id,
+        )
 
         # Generate
         inference_config = self.config.inference
@@ -327,6 +388,8 @@ class Orchestrator:
         """Generate using llama.cpp."""
         if self._llama_model is None:
             self.load_model()
+        if self._llama_model is None:
+            raise RuntimeError("GGUF model did not initialize")
 
         output = self._llama_model(
             prompt,
@@ -352,6 +415,8 @@ class Orchestrator:
         """Generate using transformers."""
         if self._model is None:
             self.load_model()
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("Transformers model did not initialize")
 
         inputs = self._tokenizer(prompt, return_tensors="pt").to(self._model.device)
         input_length = inputs.input_ids.shape[1]
@@ -396,6 +461,15 @@ class Orchestrator:
             conversation_text=conversation,
             timestamp=timestamp,
             extract_facts=self.config.facts.auto_extract,
+        )
+
+    def add_fact(self, subject: str, predicate: str, obj: str):
+        """Add a fact without initializing vector memory."""
+        return self._get_fact_store().add(
+            subject=subject,
+            predicate=predicate,
+            obj=obj,
+            source="manual",
         )
 
     def get_stats(self) -> dict:

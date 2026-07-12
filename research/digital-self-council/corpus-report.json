@@ -1,0 +1,101 @@
+{
+  "corpus_report": {
+    "counted_primary_papers": 187,
+    "inspection_depth_counts": {
+      "abstract": 87,
+      "full_text": 100
+    },
+    "publication_type_counts": {
+      "conference": 77,
+      "journal": 106,
+      "preprint": 3,
+      "workshop": 1
+    },
+    "reviewed_records": 187,
+    "seat_counts": {
+      "cognitive_memory": 20,
+      "digital_twins_agents": 19,
+      "evaluation_fidelity": 13,
+      "longitudinal_modeling": 20,
+      "narrative_identity": 20,
+      "persona_dialogue": 16,
+      "privacy_identity_safety": 20,
+      "psychometrics": 19,
+      "social_relationships": 20,
+      "values_decisions_emotion": 20
+    },
+    "total_records": 187,
+    "unique_canonical_papers": 187
+  },
+  "duplicate_group_sources": [
+    [
+      "digital_twins_agents/paper:generative-agents-1000-2024",
+      "evaluation_fidelity/paper:self-report-agents-2024"
+    ],
+    [
+      "digital_twins_agents/paper:locomo-2024",
+      "persona_dialogue/paper:persona-dialogue-maharana-2024-locomo"
+    ],
+    [
+      "digital_twins_agents/paper:memorybank-2024",
+      "persona_dialogue/paper:persona-dialogue-zhong-2024-memorybank"
+    ],
+    [
+      "digital_twins_agents/paper:out-of-one-many-2023",
+      "evaluation_fidelity/paper:out-of-one-many-2023"
+    ],
+    [
+      "digital_twins_agents/paper:plato-ltm-2022",
+      "persona_dialogue/paper:persona-dialogue-xu-2022-lemon"
+    ],
+    [
+      "digital_twins_agents/paper:turing-experiments-2023",
+      "evaluation_fidelity/paper:turing-experiments-2023"
+    ],
+    [
+      "evaluation_fidelity/paper:dialogue-nli-2019",
+      "persona_dialogue/paper:persona-dialogue-welleck-2019"
+    ],
+    [
+      "evaluation_fidelity/paper:extracting-training-data-2021",
+      "privacy_identity_safety/paper:carlini-2021-training-data-extraction"
+    ],
+    [
+      "evaluation_fidelity/paper:incharacter-2024",
+      "persona_dialogue/paper:persona-dialogue-wang-2024-incharacter"
+    ],
+    [
+      "evaluation_fidelity/paper:persona-chat-2018",
+      "persona_dialogue/paper:persona-dialogue-zhang-2018"
+    ],
+    [
+      "evaluation_fidelity/paper:pii-leakage-2023",
+      "privacy_identity_safety/paper:lukas-2023-pii-leakage"
+    ],
+    [
+      "evaluation_fidelity/paper:timechara-2024",
+      "persona_dialogue/paper:persona-dialogue-ahn-2024-timechara"
+    ],
+    [
+      "privacy_identity_safety/paper:kosinski-2013-private-traits",
+      "psychometrics/paper:psychometrics_kosinski_2013"
+    ]
+  ],
+  "duplicate_groups": 13,
+  "duplicate_records": 13,
+  "input_records": 200,
+  "output_records": 187,
+  "retained_record_ids": {
+    "paper:dialogue-nli-2019": "paper:persona-dialogue-welleck-2019",
+    "paper:extracting-training-data-2021": "paper:carlini-2021-training-data-extraction",
+    "paper:persona-chat-2018": "paper:persona-dialogue-zhang-2018",
+    "paper:persona-dialogue-ahn-2024-timechara": "paper:timechara-2024",
+    "paper:persona-dialogue-maharana-2024-locomo": "paper:locomo-2024",
+    "paper:persona-dialogue-wang-2024-incharacter": "paper:incharacter-2024",
+    "paper:persona-dialogue-zhong-2024-memorybank": "paper:memorybank-2024",
+    "paper:pii-leakage-2023": "paper:lukas-2023-pii-leakage",
+    "paper:plato-ltm-2022": "paper:persona-dialogue-xu-2022-lemon",
+    "paper:psychometrics_kosinski_2013": "paper:kosinski-2013-private-traits",
+    "paper:self-report-agents-2024": "paper:generative-agents-1000-2024"
+  }
+}

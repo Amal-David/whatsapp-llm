@@ -254,7 +254,7 @@ class SampleTextRecommender:
     def _code_switching(self, texts: list[str]) -> dict[str, Any]:
         script_counter: Counter[str] = Counter()
         mixed_messages = 0
-        romanized_markers = Counter()
+        romanized_markers: Counter[str] = Counter()
         romanized_terms = {
             "acha",
             "achha",

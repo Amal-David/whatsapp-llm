@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from collections import Counter
 from collections.abc import Iterable
@@ -125,7 +126,7 @@ class PersonaDatasetBuilder:
         self,
         context_turns: int = 6,
         gap_minutes: int = 60,
-        include_third_party_context: bool = True,
+        include_third_party_context: bool = False,
     ):
         self.context_turns = context_turns
         self.gap_minutes = gap_minutes
@@ -145,7 +146,10 @@ class PersonaDatasetBuilder:
             gap_minutes=self.gap_minutes,
             skip_system=True,
         )
-        participants = sorted(parser.get_participants(chat_file))
+        source_participants = sorted(parser.get_participants(chat_file))
+        participants = (
+            source_participants if self.include_third_party_context else [participant]
+        )
         target_messages = [
             message
             for conversation in conversations
@@ -153,17 +157,33 @@ class PersonaDatasetBuilder:
             if message.author == participant
         ]
 
-        style_metrics = self.style_analyzer.analyze(target_messages)
-        feature_summary = self._feature_summary(target_messages)
         canonical_examples = self._canonical_examples(conversations, participant)
-        self._assign_splits(canonical_examples)
+        split_by_group = self._assign_splits(canonical_examples)
+        train_group_ids = {
+            group_id for group_id, split in split_by_group.items() if split == "train"
+        }
+        training_messages = [
+            message
+            for conv_index, conversation in enumerate(conversations)
+            if f"conv_{conv_index:04d}" in train_group_ids
+            for message in conversation.messages
+            if message.author == participant
+        ]
+        if not canonical_examples:
+            training_messages = target_messages
+
+        style_metrics = self.style_analyzer.analyze(training_messages)
+        feature_summary = self._feature_summary(training_messages)
+        training_examples = [
+            row for row in canonical_examples if row["split"] == "train"
+        ]
 
         style_capsule = self._style_capsule(participant, style_metrics, feature_summary)
-        recommendation = self._recommendation(participant, style_metrics.message_count)
-        sft_alpaca = self._sft_alpaca(canonical_examples, style_capsule)
-        sft_messages = self._sft_messages(canonical_examples, style_capsule)
-        dpo_trl = self._dpo_trl(canonical_examples, style_capsule)
-        dpo_openai = self._dpo_openai(canonical_examples)
+        recommendation = self._recommendation(participant, len(target_messages))
+        sft_alpaca = self._sft_alpaca(training_examples, style_capsule)
+        sft_messages = self._sft_messages(training_examples, style_capsule)
+        dpo_trl = self._dpo_trl(training_examples, style_capsule)
+        dpo_openai = self._dpo_openai(training_examples)
         eval_rows = self._eval_rows(canonical_examples, style_capsule)
         canonical_character = self._canonical_character(
             participant=participant,
@@ -182,7 +202,8 @@ class PersonaDatasetBuilder:
             "participants": participants,
             "owner_type": owner_type,
             "conversation_count": len(conversations),
-            "target_message_count": style_metrics.message_count,
+            "target_message_count": len(target_messages),
+            "training_target_message_count": style_metrics.message_count,
             "canonical_example_count": len(canonical_examples),
             "sft_example_count": len(sft_alpaca),
             "dpo_example_count": len(dpo_trl),
@@ -280,10 +301,13 @@ class PersonaDatasetBuilder:
                     content, labels = self._context_content(context_message, participant)
                     redactions.extend(labels)
                     role = "self" if context_message.author == participant else "other"
+                    speaker = context_message.author
+                    if role == "other" and not self.include_third_party_context:
+                        speaker = "other"
                     context.append(
                         {
                             "role": role,
-                            "speaker": context_message.author,
+                            "speaker": speaker,
                             "content": content,
                         }
                     )
@@ -332,26 +356,38 @@ class PersonaDatasetBuilder:
 
         return rows
 
-    def _assign_splits(self, rows: list[dict[str, Any]]) -> None:
-        total = len(rows)
-        if total == 0:
-            return
+    def _assign_splits(self, rows: list[dict[str, Any]]) -> dict[str, str]:
+        group_ids = list(dict.fromkeys(row["split_group_id"] for row in rows))
+        if not group_ids:
+            return {}
 
-        for index, row in enumerate(rows):
-            fraction = index / total
-            if total < 10:
-                split = "train"
-            elif fraction < 0.8:
-                split = "train"
-            elif fraction < 0.9:
-                split = "validation"
-            else:
-                split = "test"
-            row["split"] = split
+        if len(group_ids) < 3:
+            split_by_group = {group_id: "train" for group_id in group_ids}
+        else:
+            holdout_count = min(
+                len(group_ids) - 1,
+                max(2, math.ceil(len(group_ids) * 0.2)),
+            )
+            validation_count = max(1, holdout_count // 2)
+            train_count = len(group_ids) - holdout_count
+            validation_end = train_count + validation_count
+            split_by_group = {}
+            for index, group_id in enumerate(group_ids):
+                if index < train_count:
+                    split = "train"
+                elif index < validation_end:
+                    split = "validation"
+                else:
+                    split = "test"
+                split_by_group[group_id] = split
+
+        for row in rows:
+            row["split"] = split_by_group[row["split_group_id"]]
+        return split_by_group
 
     def _context_content(self, message: ChatMessage, participant: str) -> tuple[str, list[str]]:
         if message.author != participant and not self.include_third_party_context:
-            return f"[message from {message.author} withheld]", ["THIRD_PARTY_CONTEXT_WITHHELD"]
+            return "[third-party message withheld]", ["THIRD_PARTY_CONTEXT_WITHHELD"]
         return redact_text(message.message)
 
     def _sft_alpaca(
@@ -463,8 +499,6 @@ class PersonaDatasetBuilder:
         style_capsule: dict[str, Any],
     ) -> list[dict[str, Any]]:
         eval_source = [row for row in rows if row["split"] in {"validation", "test"}]
-        if not eval_source and rows:
-            eval_source = rows[-max(1, len(rows) // 10) :]
 
         return [
             {
@@ -523,7 +557,6 @@ class PersonaDatasetBuilder:
         owner_type: str,
     ) -> dict[str, Any]:
         persona_id = slugify_name(participant)
-        examples = self._character_examples(canonical_examples[:8], participant)
         language_profile = feature_summary["language_profile"]
         traits = self._trait_labels(style_metrics, feature_summary)
         now = datetime.now(timezone.utc).isoformat()
@@ -541,12 +574,11 @@ class PersonaDatasetBuilder:
             "profile": {
                 "summary": self._profile_summary(participant, style_metrics, feature_summary),
                 "traits": traits,
-                "topics": self._topic_hints(canonical_examples),
+                "topics": [],
                 "relationship_context": {
                     "role_in_chat": "unknown",
-                    "known_relationships": [
-                        name for name in participants if name != participant
-                    ][:10],
+                    "known_relationships": [],
+                    "other_participant_count": max(0, len(participants) - 1),
                 },
                 "boundaries": {
                     "do_not_infer": [
@@ -567,9 +599,9 @@ class PersonaDatasetBuilder:
                 "emoji_use": self._emoji_use(style_metrics),
                 "punctuation": feature_summary["punctuation_style"],
                 "humor": "unknown",
-                "typical_openings": feature_summary["top_openers"],
-                "typical_closings": feature_summary["top_closers"],
-                "catchphrases": [phrase for phrase, _ in style_metrics.common_phrases[:8]],
+                "typical_openings": [],
+                "typical_closings": [],
+                "catchphrases": [],
                 "response_patterns": {
                     "latency_style": self._latency_style(style_metrics),
                     "message_chunking": feature_summary["message_chunking"],
@@ -584,10 +616,10 @@ class PersonaDatasetBuilder:
                     "Preserve the participant's observed conversational mechanics. "
                     "If the prompt asks for impersonation without consent, refuse and offer a general tone."
                 ),
-                "first_message": examples[0]["messages"][-1]["text"] if examples else "Hey",
+                "first_message": "Hey",
                 "scenario": "A WhatsApp-style conversation with known participants.",
             },
-            "examples": {"dialogue": examples},
+            "examples": {"dialogue": []},
             "knowledge": {
                 "stable_facts": [],
                 "uncertain_facts": [],
@@ -868,49 +900,6 @@ class PersonaDatasetBuilder:
             f"{self._emoji_use(metrics)} emoji use, {features['punctuation_style']} punctuation, "
             f"and {features['language_profile']['code_switching']} code-switching in the observed data."
         )
-
-    def _topic_hints(self, rows: list[dict[str, Any]]) -> list[str]:
-        counter: Counter[str] = Counter()
-        stopwords = {
-            "about",
-            "after",
-            "are",
-            "can",
-            "for",
-            "have",
-            "how",
-            "just",
-            "later",
-            "that",
-            "the",
-            "this",
-            "what",
-            "where",
-            "with",
-            "you",
-            "your",
-        }
-        for row in rows:
-            text = " ".join(item["content"] for item in row["context"])
-            text += " " + row["target"]["content"]
-            words = re.findall(r"\b[a-zA-Z]{4,}\b", text.lower())
-            counter.update(word for word in words if word not in stopwords)
-        return [word for word, _ in counter.most_common(12)]
-
-    def _character_examples(
-        self,
-        rows: list[dict[str, Any]],
-        participant: str,
-    ) -> list[dict[str, Any]]:
-        examples = []
-        for row in rows:
-            messages = []
-            last_context = row["context"][-2:]
-            for item in last_context:
-                messages.append({"speaker": item["speaker"], "text": item["content"]})
-            messages.append({"speaker": participant, "text": row["target"]["content"]})
-            examples.append({"context": row["source"]["conversation_id"], "messages": messages})
-        return examples
 
     def _date_range(self, rows: list[dict[str, Any]]) -> dict[str, str | None]:
         timestamps = [row["source"]["timestamp"] for row in rows]

@@ -6,8 +6,9 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 try:
     import chromadb
@@ -111,11 +112,33 @@ class VectorStore:
         unique_str = f"{content}_{timestamp.isoformat()}"
         return hashlib.sha256(unique_str.encode()).hexdigest()[:16]
 
+    @staticmethod
+    def chunk_text(content: str, chunk_size: int, chunk_overlap: int = 0) -> list[str]:
+        """Split text into overlapping word chunks."""
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if chunk_overlap < 0 or chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
+
+        words = content.split()
+        if not words:
+            return []
+
+        step = chunk_size - chunk_overlap
+        chunks = []
+        start = 0
+        while start < len(words):
+            chunks.append(" ".join(words[start : start + chunk_size]))
+            if start + chunk_size >= len(words):
+                break
+            start += step
+        return chunks
+
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a list of texts."""
         model = self._get_embedding_model()
         embeddings = model.encode(texts, convert_to_numpy=True)
-        return embeddings.tolist()
+        return cast(list[list[float]], embeddings.tolist())
 
     def add(
         self,
@@ -134,7 +157,7 @@ class VectorStore:
         Returns:
             The ID of the added entry
         """
-        timestamp = timestamp or datetime.now()
+        timestamp = timestamp or datetime.now(timezone.utc)
         metadata = metadata or {}
 
         entry_id = self._generate_id(content, timestamp)
@@ -220,12 +243,40 @@ class VectorStore:
 
         return ids
 
+    def add_chunked(
+        self,
+        content: str,
+        timestamp: datetime | None = None,
+        metadata: dict | None = None,
+        chunk_size: int = 512,
+        chunk_overlap: int = 50,
+    ) -> list[str]:
+        """Chunk content and add each chunk with stable source metadata."""
+        timestamp = timestamp or datetime.now(timezone.utc)
+        metadata = metadata or {}
+        chunks = self.chunk_text(content, chunk_size, chunk_overlap)
+        entries = [
+            (
+                chunk,
+                timestamp,
+                {
+                    **metadata,
+                    "chunk_index": index,
+                    "chunk_count": len(chunks),
+                },
+            )
+            for index, chunk in enumerate(chunks)
+        ]
+        return self.add_batch(entries)
+
     def search(
         self,
         query: str,
         top_k: int = 5,
         min_score: float = 0.0,
         filter_metadata: dict | None = None,
+        before: datetime | None = None,
+        after: datetime | None = None,
     ) -> list[tuple[MemoryEntry, float]]:
         """
         Search for relevant memories.
@@ -235,6 +286,8 @@ class VectorStore:
             top_k: Number of results to return
             min_score: Minimum similarity score (0-1)
             filter_metadata: Optional metadata filter
+            before: Exclude memories newer than this time
+            after: Exclude memories older than this time
 
         Returns:
             List of (MemoryEntry, score) tuples sorted by relevance
@@ -246,9 +299,10 @@ class VectorStore:
         if filter_metadata:
             where = {k: str(v) for k, v in filter_metadata.items()}
 
+        candidate_count = top_k * 4 if before or after else top_k
         results = self._collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k,
+            n_results=max(1, candidate_count),
             where=where,
             include=["documents", "metadatas", "distances"],
         )
@@ -263,9 +317,15 @@ class VectorStore:
             if score < min_score:
                 continue
 
-            metadata = results["metadatas"][0][i]
+            metadata = dict(results["metadatas"][0][i])
             timestamp = datetime.fromisoformat(metadata.pop("timestamp"))
             metadata.pop("content_preview", None)
+
+            comparable_timestamp = self._as_utc(timestamp)
+            if after and comparable_timestamp < self._as_utc(after):
+                continue
+            if before and comparable_timestamp > self._as_utc(before):
+                continue
 
             entry = MemoryEntry(
                 id=doc_id,
@@ -274,8 +334,16 @@ class VectorStore:
                 metadata=metadata,
             )
             entries.append((entry, score))
+            if len(entries) >= top_k:
+                break
 
         return entries
+
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
     def get_recent(self, limit: int = 10) -> list[MemoryEntry]:
         """Get the most recent memories."""
@@ -320,7 +388,7 @@ class VectorStore:
 
     def count(self) -> int:
         """Get the number of memories in the store."""
-        return self._collection.count()
+        return int(self._collection.count())
 
     def export(self, filepath: str | Path) -> int:
         """Export all memories to a JSON file."""
@@ -347,7 +415,10 @@ class VectorStore:
         count = 0
         for entry in entries:
             timestamp = datetime.fromisoformat(
-                entry["metadata"].get("timestamp", datetime.now().isoformat())
+                entry["metadata"].get(
+                    "timestamp",
+                    datetime.now(timezone.utc).isoformat(),
+                )
             )
             self.add(
                 content=entry["content"],

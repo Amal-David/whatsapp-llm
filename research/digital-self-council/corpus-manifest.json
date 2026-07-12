@@ -1,0 +1,237 @@
+{
+  "contracts": {
+    "council_path": "council.yaml",
+    "council_sha256": "a278bb58adef81cafd93843c66fc5e0ee3f6c61da1001d119bc8a1d870f9d12a",
+    "paper_schema_path": "paper.schema.json",
+    "paper_schema_sha256": "35e68b0bac040add4467754df8aa81881b6d4a84ddd82bf914c894b877d8d7ec"
+  },
+  "evidence_map": {
+    "cited_paper_count": 97,
+    "claim_count": 37,
+    "path": "evidence-map.json",
+    "sha256": "0520a2442997bd03c5476ebbc0ab6dfa97396947a28d1860176bfe05b3199156",
+    "status_counts": {
+      "plausible": 7,
+      "speculative": 3,
+      "validated": 27
+    },
+    "uncited_corpus_papers": 90
+  },
+  "merged_corpus": {
+    "inspection_depth_counts": {
+      "abstract": 87,
+      "full_text": 100
+    },
+    "path": "corpus.jsonl",
+    "record_count": 187,
+    "report_path": "corpus-report.json",
+    "report_sha256": "27510313f00f46c1837c15ed3ab14e6d2490c6fc93c51688e8c266020675c674",
+    "reviewed_records": 187,
+    "sha256": "159f0c68cfcf5b0b06fa1523521a88647ba4c9081f6047df640fa58ed13e701e",
+    "summary_path": "corpus-summary.json",
+    "summary_sha256": "beba0ee3101ea81a806a9664341331d8737622dbcd4d31ddbd68246127a0ab6a"
+  },
+  "schema_version": "digital_self_corpus_manifest.v1",
+  "seats": [
+    {
+      "extractors": [
+        "council-psychometrics"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 10,
+        "full_text": 10
+      },
+      "note_path": "seat-notes/psychometrics.md",
+      "note_sha256": "acc1656d78229868266a3f775236b9868803afbaf33dc1771bcfd3d6e56a0ed6",
+      "path": "seats/psychometrics.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/psychometrics.reviewed-by-digital_twins_agents.md",
+      "review_sha256": "f4f60a7fcbe2d288f75d81a04875f3b5a8ee6d75c1d5747a48926ab14d31fea7",
+      "reviewers": [
+        "019f4f07-5630-7e92-88b1-8534576fbd2e"
+      ],
+      "seat": "psychometrics",
+      "sha256": "3cf93a16e1ab3b7424304e50cd9471c2d8d010de50c2e4078a6603214452ac7b"
+    },
+    {
+      "extractors": [
+        "council-narrative_identity"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 15,
+        "full_text": 5
+      },
+      "note_path": "seat-notes/narrative_identity.md",
+      "note_sha256": "e09834caccdd7d7f3810a156df8be136ab97ae0218ea12ff95f0a03c924ebbc4",
+      "path": "seats/narrative_identity.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/narrative_identity.reviewed-by-psychometrics.md",
+      "review_sha256": "7d6b6d25996d091bed1d6a6b7cc94da2627916866edaddb010732cbc0471e670",
+      "reviewers": [
+        "019f4f06-6d72-79f1-9cdd-3d4b6163199b"
+      ],
+      "seat": "narrative_identity",
+      "sha256": "1655a8e7b813293172a7cdc14618534f0167f0e11095b5d5a9ffebae6d1b50b5"
+    },
+    {
+      "extractors": [
+        "council-cognitive_memory"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 17,
+        "full_text": 3
+      },
+      "note_path": "seat-notes/cognitive_memory.md",
+      "note_sha256": "96824c6150ba19fedb0e8d02137e5cab9399ff71182496d543946560895b6195",
+      "path": "seats/cognitive_memory.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/cognitive_memory.reviewed-by-narrative_identity.md",
+      "review_sha256": "1c3c5706a78d560a159b9300397bed511cbbb94af812cee0b288971a39b01e50",
+      "reviewers": [
+        "019f4f06-ead6-7c73-8a68-dfabd3b272ba"
+      ],
+      "seat": "cognitive_memory",
+      "sha256": "5be1c6c087e1ead4336655ecb940ce648acf715ff3bbe5effacad6662a0be1ab"
+    },
+    {
+      "extractors": [
+        "council-persona_dialogue"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 7,
+        "full_text": 13
+      },
+      "note_path": "seat-notes/persona_dialogue.md",
+      "note_sha256": "cc7eb7bfb14ac6398360f0549bcd5d4f34328f000b753439e62ee963b710831a",
+      "path": "seats/persona_dialogue.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/persona_dialogue.reviewed-by-cognitive_memory.md",
+      "review_sha256": "a992d3e2167cf79d76960afd30cb2177ff5b58cac1255e824403cf3915e2a3e0",
+      "reviewers": [
+        "019f4f06-f7d6-7190-87d7-80a1806aedcf"
+      ],
+      "seat": "persona_dialogue",
+      "sha256": "4d3e7d47297fb2b9f21bdc55a962e1a382fccce36b9a117757492b1e5d5f30ba"
+    },
+    {
+      "extractors": [
+        "council-social_relationships"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 14,
+        "full_text": 6
+      },
+      "note_path": "seat-notes/social_relationships.md",
+      "note_sha256": "c44f1bc278e7ac3f880d76610b4bea5ec7fb3a73e3ff398e5ef77ee5488ab4f3",
+      "path": "seats/social_relationships.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/social_relationships.reviewed-by-persona_dialogue.md",
+      "review_sha256": "9b74b62d96db0618886449cb00b952bc5b249f1445c0ff0fc7dc7e7d960b0a5c",
+      "reviewers": [
+        "019f4f07-0534-77c3-af91-f9f55fb1356f"
+      ],
+      "seat": "social_relationships",
+      "sha256": "9d44919c0228c61c864ce2486c00f34c4a6bb6f3f2b09b085146e22a43873427"
+    },
+    {
+      "extractors": [
+        "council-longitudinal_modeling"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 1,
+        "full_text": 19
+      },
+      "note_path": "seat-notes/longitudinal_modeling.md",
+      "note_sha256": "d51128d6338b30d71996f6788c9b93ee5c52936e1b1abdbf74161b76a4e68c54",
+      "path": "seats/longitudinal_modeling.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/longitudinal_modeling.reviewed-by-social_relationships.md",
+      "review_sha256": "3e0fe8f1f3fb4d33ea7feb24a9d99a0aca75d7c610a1541fec92bfa441a3a065",
+      "reviewers": [
+        "019f4f07-10e4-7660-9c2f-c6ea34490a72"
+      ],
+      "seat": "longitudinal_modeling",
+      "sha256": "06a6e7165b488f516462319e0788aaf2dc771c1bbdbebc2de99a2f070951736d"
+    },
+    {
+      "extractors": [
+        "council-values_decisions_emotion"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 17,
+        "full_text": 3
+      },
+      "note_path": "seat-notes/values_decisions_emotion.md",
+      "note_sha256": "63c39197bc1882b8fdef8039bb9d1d1b35454c51519beebebbdb8058502d5a56",
+      "path": "seats/values_decisions_emotion.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/values_decisions_emotion.reviewed-by-longitudinal_modeling.md",
+      "review_sha256": "db18dbd39cabd4b8a2d34c1485eba5a09c27e85ab2423007aa683e7c4a6985ac",
+      "reviewers": [
+        "019f4f07-1d9f-7ce0-aa3a-47888081b2dd"
+      ],
+      "seat": "values_decisions_emotion",
+      "sha256": "eb19546017ff6aafe09745252236e8aaa5846ed0803c30aeb9920e1959499ae5"
+    },
+    {
+      "extractors": [
+        "council-evaluation_fidelity"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 1,
+        "full_text": 19
+      },
+      "note_path": "seat-notes/evaluation_fidelity.md",
+      "note_sha256": "74eaa570243ec2989886fef271d867ca05dc58e4b0dffd570c51ab13f23775ba",
+      "path": "seats/evaluation_fidelity.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/evaluation_fidelity.reviewed-by-values_decisions_emotion.md",
+      "review_sha256": "624fbe44963031855b99060fff78f2bb64b33ca891fdcf0683d8cb9ad5557146",
+      "reviewers": [
+        "019f4f07-351c-7361-b187-acee575e3fe6"
+      ],
+      "seat": "evaluation_fidelity",
+      "sha256": "3d0b79650669233f31d557416733ab855cb8c762c17ccdd1b9dc3bc61a5c7fc3"
+    },
+    {
+      "extractors": [
+        "council-privacy_identity_safety"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 3,
+        "full_text": 17
+      },
+      "note_path": "seat-notes/privacy_identity_safety.md",
+      "note_sha256": "40da84ebc6dcd0aba96495272e9c52fec05ec1cb4ad571c6adf3133d5dd024ea",
+      "path": "seats/privacy_identity_safety.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/privacy_identity_safety.reviewed-by-evaluation_fidelity.md",
+      "review_sha256": "f2df140178ae60b2eab557934a5a2caa357db440c637ca9f857b5c13fecfb11f",
+      "reviewers": [
+        "019f4f07-3f74-7193-a53e-6b392adaf6f0"
+      ],
+      "seat": "privacy_identity_safety",
+      "sha256": "ff5f5d02e832f8c117c88c5bdc7aad2329cf4d7e6511b56798df9fa7bde86464"
+    },
+    {
+      "extractors": [
+        "council-digital_twins_agents"
+      ],
+      "inspection_depth_counts": {
+        "abstract": 3,
+        "full_text": 17
+      },
+      "note_path": "seat-notes/digital_twins_agents.md",
+      "note_sha256": "2c2dba37c1fae420ed701985319f31ba332ef8edafeae15149ac552f7bb7c4d1",
+      "path": "seats/digital_twins_agents.jsonl",
+      "record_count": 20,
+      "review_path": "reviews/digital_twins_agents.reviewed-by-privacy_identity_safety.md",
+      "review_sha256": "9ee0cd8c33475df8ea13a1a2616e8157b476ca729838a0ccc5fa6c3698834b76",
+      "reviewers": [
+        "019f4f07-4af5-7562-98f7-3f525272ce25"
+      ],
+      "seat": "digital_twins_agents",
+      "sha256": "708150d3a27fff1fe9b2ca9e6a01d0bebd1862b9dee2f6613d4de97bb3729287"
+    }
+  ]
+}

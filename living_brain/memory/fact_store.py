@@ -4,8 +4,11 @@ Fact store for semantic memory (knowledge graph lite).
 
 import json
 import logging
+import os
 import re
-from dataclasses import dataclass, field
+import tempfile
+import threading
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -96,29 +99,47 @@ class FactStore:
         self.facts_path = Path(facts_path)
         self.facts_path.parent.mkdir(parents=True, exist_ok=True)
 
+        self._lock = threading.RLock()
         self._facts: dict[str, Fact] = {}
         self._load()
 
     def _load(self) -> None:
         """Load facts from disk."""
         if self.facts_path.exists():
-            try:
-                with open(self.facts_path) as f:
-                    data = json.load(f)
-                for fact_data in data:
-                    fact = Fact.from_dict(fact_data)
-                    self._facts[fact.id] = fact
-                logger.info(f"Loaded {len(self._facts)} facts")
-            except Exception as e:
-                logger.error(f"Failed to load facts: {e}")
+            with open(self.facts_path) as f:
+                data = json.load(f)
+            if not isinstance(data, list):
+                raise ValueError("Fact store must contain a JSON array")
 
-    def _save(self) -> None:
-        """Save facts to disk."""
+            loaded = {}
+            for fact_data in data:
+                fact = Fact.from_dict(fact_data)
+                loaded[fact.id] = fact
+            self._facts = loaded
+            logger.info(f"Loaded {len(self._facts)} facts")
+
+    def _save(self, facts: dict[str, Fact] | None = None) -> None:
+        """Atomically save facts to disk."""
+        facts = self._facts if facts is None else facts
+        temp_path: Path | None = None
         try:
-            with open(self.facts_path, 'w') as f:
-                json.dump([f.to_dict() for f in self._facts.values()], f, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save facts: {e}")
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.facts_path.parent,
+                prefix=f".{self.facts_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                temp_path = Path(temp_file.name)
+                json.dump([fact.to_dict() for fact in facts.values()], temp_file, indent=2)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+            os.replace(temp_path, self.facts_path)
+        except Exception:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+            raise
 
     def add(
         self,
@@ -150,25 +171,48 @@ class FactStore:
             confidence=confidence,
             source=source,
         )
-
-        # Check for existing fact with same subject+predicate
-        existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(" ", "_")
-        for key, existing in list(self._facts.items()):
-            if key.startswith(existing_key + ":") and key != fact.id:
-                # Mark old fact as superseded
-                existing.superseded_by = fact.id
-                logger.info(f"Fact superseded: {existing.to_natural()} -> {fact.to_natural()}")
-
-        self._facts[fact.id] = fact
-        self._save()
+        self._add_facts([fact])
         return fact
+
+    def _add_facts(self, facts: list[Fact]) -> None:
+        """Apply one atomic supersession-aware update for a fact batch."""
+        if not facts:
+            return
+        with self._lock:
+            updated_facts = dict(self._facts)
+
+            for fact in facts:
+                existing_key = f"{fact.subject}:{fact.predicate}".lower().replace(
+                    " ", "_"
+                )
+                for key, existing in list(updated_facts.items()):
+                    if key.startswith(existing_key + ":") and key != fact.id:
+                        updated_facts[key] = replace(
+                            existing,
+                            superseded_by=fact.id,
+                        )
+                        logger.info(
+                            "Fact superseded: %s -> %s",
+                            existing.to_natural(),
+                            fact.to_natural(),
+                        )
+                updated_facts[fact.id] = fact
+
+            self._save(updated_facts)
+            self._facts = updated_facts
 
     def add_batch(self, facts: list[tuple[str, str, str]]) -> list[Fact]:
         """Add multiple facts at once."""
-        results = []
-        for subject, predicate, obj in facts:
-            fact = self.add(subject, predicate, obj)
-            results.append(fact)
+        results = [
+            Fact(
+                subject=subject.strip(),
+                predicate=predicate.strip(),
+                object=obj.strip(),
+                source="manual",
+            )
+            for subject, predicate, obj in facts
+        ]
+        self._add_facts(results)
         return results
 
     def get(self, fact_id: str) -> Fact | None:
@@ -292,14 +336,7 @@ class FactStore:
         facts = self.extract_facts(text)
 
         if auto_add:
-            for fact in facts:
-                self.add(
-                    fact.subject,
-                    fact.predicate,
-                    fact.object,
-                    confidence=fact.confidence,
-                    source=fact.source,
-                )
+            self._add_facts(facts)
 
         return facts
 
@@ -326,16 +363,20 @@ class FactStore:
 
     def delete(self, fact_id: str) -> bool:
         """Delete a fact."""
-        if fact_id in self._facts:
-            del self._facts[fact_id]
-            self._save()
+        with self._lock:
+            if fact_id not in self._facts:
+                return False
+            updated_facts = dict(self._facts)
+            del updated_facts[fact_id]
+            self._save(updated_facts)
+            self._facts = updated_facts
             return True
-        return False
 
     def clear(self) -> None:
         """Clear all facts."""
-        self._facts.clear()
-        self._save()
+        with self._lock:
+            self._save({})
+            self._facts = {}
 
     def count(self) -> int:
         """Get number of active facts."""
@@ -352,11 +393,14 @@ class FactStore:
         with open(filepath) as f:
             data = json.load(f)
 
-        count = 0
-        for fact_data in data:
-            fact = Fact.from_dict(fact_data)
-            self._facts[fact.id] = fact
-            count += 1
+        with self._lock:
+            updated_facts = dict(self._facts)
+            count = 0
+            for fact_data in data:
+                fact = Fact.from_dict(fact_data)
+                updated_facts[fact.id] = fact
+                count += 1
 
-        self._save()
-        return count
+            self._save(updated_facts)
+            self._facts = updated_facts
+            return count

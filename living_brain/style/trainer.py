@@ -2,11 +2,10 @@
 Style trainer using Unsloth for efficient LoRA fine-tuning.
 """
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +18,8 @@ except ImportError:
 
 try:
     from datasets import load_dataset
-    from trl import SFTTrainer
     from transformers import TrainingArguments
+    from trl import SFTTrainer
     TRL_AVAILABLE = True
 except ImportError:
     TRL_AVAILABLE = False
@@ -65,7 +64,7 @@ class StyleTrainer:
     def __init__(
         self,
         model_name: str = "llama-3.2-3b",
-        config: Optional[TrainingConfig] = None,
+        config: TrainingConfig | None = None,
         load_in_4bit: bool = True,
     ):
         """
@@ -97,8 +96,13 @@ class StyleTrainer:
         else:
             self.model_path = model_name
 
-        self.model = None
-        self.tokenizer = None
+        self.model: Any | None = None
+        self.tokenizer: Any | None = None
+
+    def _require_loaded_state(self) -> tuple[Any, Any]:
+        if self.model is None or self.tokenizer is None:
+            raise RuntimeError("model and tokenizer did not initialize")
+        return self.model, self.tokenizer
 
     def load_model(self) -> None:
         """Load the base model with LoRA adapters."""
@@ -148,7 +152,7 @@ class StyleTrainer:
                     text += f"<|start_header_id|>user<|end_header_id|>\n\n{instruction}"
                     if input_text:
                         text += f"\n{input_text}"
-                    text += f"<|eot_id|>"
+                    text += "<|eot_id|>"
                     text += f"<|start_header_id|>assistant<|end_header_id|>\n\n{output}<|eot_id|>"
                     texts.append(text)
                 return {"text": texts}
@@ -169,7 +173,7 @@ class StyleTrainer:
                     text += f"<|im_start|>user\n{instruction}"
                     if input_text:
                         text += f"\n{input_text}"
-                    text += f"<|im_end|>\n"
+                    text += "<|im_end|>\n"
                     text += f"<|im_start|>assistant\n{output}<|im_end|>"
                     texts.append(text)
                 return {"text": texts}
@@ -191,7 +195,7 @@ class StyleTrainer:
                     text += f"<|im_start|>user\n{instruction}"
                     if input_text:
                         text += f"\n{input_text}"
-                    text += f"<|im_end|>\n"
+                    text += "<|im_end|>\n"
                     text += f"<|im_start|>assistant\n{output}<|im_end|>"
                     texts.append(text)
                 return {"text": texts}
@@ -209,6 +213,7 @@ class StyleTrainer:
         """
         if self.model is None:
             self.load_model()
+        model, tokenizer = self._require_loaded_state()
 
         data_path = Path(data_path)
         if not data_path.exists():
@@ -246,8 +251,8 @@ class StyleTrainer:
 
         # Create trainer
         trainer = SFTTrainer(
-            model=self.model,
-            tokenizer=self.tokenizer,
+            model=model,
+            tokenizer=tokenizer,
             train_dataset=dataset,
             dataset_text_field="text",
             max_seq_length=self.config.max_seq_length,
@@ -260,8 +265,8 @@ class StyleTrainer:
 
         # Save adapter
         adapter_path = output_dir / "adapter"
-        self.model.save_pretrained(str(adapter_path))
-        self.tokenizer.save_pretrained(str(adapter_path))
+        model.save_pretrained(str(adapter_path))
+        tokenizer.save_pretrained(str(adapter_path))
 
         logger.info(f"Adapter saved to {adapter_path}")
         return str(adapter_path)
@@ -285,6 +290,7 @@ class StyleTrainer:
         """
         if self.model is None:
             self.load_model()
+        model, tokenizer = self._require_loaded_state()
 
         adapter_path = Path(adapter_path)
         output_path = Path(output_path)
@@ -292,14 +298,14 @@ class StyleTrainer:
 
         # Load the adapter
         from peft import PeftModel
-        self.model = PeftModel.from_pretrained(self.model, str(adapter_path))
+        self.model = PeftModel.from_pretrained(model, str(adapter_path))
 
         logger.info(f"Exporting to GGUF with {quantization} quantization...")
 
         # Use Unsloth's GGUF export
         self.model.save_pretrained_gguf(
             str(output_path.parent),
-            self.tokenizer,
+            tokenizer,
             quantization_method=quantization,
         )
 
@@ -331,9 +337,10 @@ class StyleTrainer:
         """
         if self.model is None:
             self.load_model()
+        model, tokenizer = self._require_loaded_state()
 
         from peft import PeftModel
-        self.model = PeftModel.from_pretrained(self.model, str(adapter_path))
+        self.model = PeftModel.from_pretrained(model, str(adapter_path))
 
         logger.info(f"Pushing to HuggingFace Hub: {repo_name}")
 
@@ -342,7 +349,7 @@ class StyleTrainer:
             private=private,
             token=True,  # Use cached token
         )
-        self.tokenizer.push_to_hub(
+        tokenizer.push_to_hub(
             repo_name,
             private=private,
             token=True,
