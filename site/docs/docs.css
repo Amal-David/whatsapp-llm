@@ -42,7 +42,7 @@
 .doc-section h3 { font-family: var(--display); font-size: 24px; font-weight: 500; margin: 42px 0 8px; }
 
 .code-block { background: var(--ink); color: var(--paper); margin: 24px 0 34px; max-width: 860px; min-height: 76px; overflow-x: auto; position: relative; }
-.code-block pre { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.7; margin: 0; min-width: max-content; padding: 24px 86px 24px 24px; }
+.code-block pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.7; margin: 0; min-width: max-content; padding: 24px 86px 24px 24px; }
 .code-block button { background: transparent; border: 1px solid var(--line-dark); color: var(--paper-muted); cursor: pointer; font: 700 9px var(--sans); padding: 7px 10px; position: absolute; right: 12px; text-transform: uppercase; top: 12px; transition: border-color 160ms ease, color 160ms ease; z-index: 2; }
 .code-block button:hover { border-color: var(--green); color: var(--green); }
 
