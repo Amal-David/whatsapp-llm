@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0a0d0c">
+    <meta name="description" content="Digital Self is an experimental, local-first toolkit for building inspectable representations from authorized WhatsApp conversations.">
+    <meta property="og:title" content="Digital Self - WhatsApp LLM">
+    <meta property="og:description" content="Selected conversations become reviewable evidence, not a claim to reconstruct a person.">
+    <meta property="og:image" content="/assets/conversation-archive.webp">
+    <title>Digital Self - WhatsApp LLM</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/main.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="/" aria-label="Digital Self home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Digital Self</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#approaches">Approaches</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#limits">Limits</a>
+        <a href="/docs/">Docs</a>
+        <a class="nav-action" href="https://github.com/Amal-David/whatsapp-llm">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <img class="hero-image" src="/assets/conversation-archive.webp" alt="Layered paper notes connected beneath a green archival glass plate">
+        <div class="hero-shade" aria-hidden="true"></div>
+        <canvas class="memory-field" data-memory-field aria-hidden="true"></canvas>
+        <div class="hero-content">
+          <p class="eyebrow"><span></span> Experimental · local-first · owner reviewed</p>
+          <h1 id="hero-title">Digital Self</h1>
+          <p class="hero-statement">Your chat history is not a brain. It is evidence.</p>
+          <p class="hero-copy">Turn selected WhatsApp conversations into inspectable style, memory, and relationship-aware state without pretending the model is the person.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="/docs/">Read the docs <span aria-hidden="true">→</span></a>
+            <a class="button button-secondary" href="https://github.com/Amal-David/whatsapp-llm">Inspect the repository</a>
+          </div>
+        </div>
+        <div class="hero-index" aria-label="Project principles">
+          <p><strong>01</strong><span>Selected sources</span></p>
+          <p><strong>02</strong><span>Visible uncertainty</span></p>
+          <p><strong>03</strong><span>Owner judgment</span></p>
+        </div>
+      </section>
+
+      <section class="approaches section" id="approaches" aria-labelledby="approaches-title">
+        <div class="section-heading reveal">
+          <p class="kicker">Two honest scopes</p>
+          <h2 id="approaches-title">One chat, or the wider pattern.</h2>
+          <p>More data is not automatically more truth. Start with the representation you can actually test.</p>
+        </div>
+        <div class="approach-grid">
+          <article class="approach reveal">
+            <p class="approach-number">A / narrow</p>
+            <h3>Mini-Me</h3>
+            <p class="approach-lede">How does this person tend to write here?</p>
+            <p>One selected participant, usually one conversation, converted into relationship-scoped style examples and held-out evaluation.</p>
+            <ul>
+              <li>Consented chat export</li>
+              <li>Canonical reply examples</li>
+              <li>Style and privacy review</li>
+            </ul>
+            <a href="/docs/#mini-me">Build a Mini-Me <span aria-hidden="true">→</span></a>
+          </article>
+          <article class="approach approach-wide reveal">
+            <p class="approach-number">B / multi-chat</p>
+            <h3>Digital Self</h3>
+            <p class="approach-lede">Which patterns survive across relationships and time?</p>
+            <p>Selected owner messages plus an optional interview become versioned evidence, claims, relationship profiles, uncertainty, and typed state.</p>
+            <ul>
+              <li>Read-only local sources</li>
+              <li>Provenance and validity windows</li>
+              <li>Correction without erased history</li>
+            </ul>
+            <a href="/docs/#digital-self">Build a Digital Self <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+      </section>
+
+      <section class="evidence section" id="evidence" aria-labelledby="evidence-title">
+        <div class="section-heading reveal">
+          <p class="kicker">Evidence before imitation</p>
+          <h2 id="evidence-title">Every claim keeps its receipts.</h2>
+          <p>The canonical state sits outside the model. It can be inspected, dated, scoped, corrected, and evaluated.</p>
+        </div>
+        <ol class="evidence-steps">
+          <li class="reveal"><span>01</span><h3>Select</h3><p>Choose local chats explicitly. Nothing silently expands to all conversations.</p></li>
+          <li class="reveal"><span>02</span><h3>Separate</h3><p>Owner evidence stays distinct from third-party context and cannot borrow its identity.</p></li>
+          <li class="reveal"><span>03</span><h3>Scope</h3><p>Patterns carry time, relationship, confidence, provenance, and sensitivity.</p></li>
+          <li class="reveal"><span>04</span><h3>Question</h3><p>Coverage gaps become owner questions instead of confident invention.</p></li>
+          <li class="reveal"><span>05</span><h3>Correct</h3><p>A correction creates a successor and leaves the historical record visible.</p></li>
+          <li class="reveal"><span>06</span><h3>Judge</h3><p>Eight axes stay separate, with privacy failures blocking an overall pass.</p></li>
+        </ol>
+      </section>
+
+      <section class="receipt-section" aria-labelledby="receipts-title">
+        <div class="receipt-copy reveal">
+          <p class="kicker">The guided run</p>
+          <h2 id="receipts-title">Twelve files. One auditable path.</h2>
+          <p>They are stages and receipts, not twelve models and not a magic replica score.</p>
+        </div>
+        <div class="receipt-window" aria-label="Twelve guided run artifacts">
+          <div class="receipt-track">
+            <span>01 · source selection</span><span>02 · initial state</span><span>03 · coverage before</span><span>04 · adaptive interview</span><span>05 · interviewed state</span><span>06 · inspection</span><span>07 · correction receipt</span><span>08 · final state</span><span>09 · coverage after</span><span>10 · simulation</span><span>11 · evaluation</span><span>12 · run summary</span>
+            <span aria-hidden="true">01 · source selection</span><span aria-hidden="true">02 · initial state</span><span aria-hidden="true">03 · coverage before</span><span aria-hidden="true">04 · adaptive interview</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="docs-band section" aria-labelledby="docs-title">
+        <div class="docs-intro reveal">
+          <p class="kicker">Read the system</p>
+          <h2 id="docs-title">The docs are part of the product.</h2>
+          <p>Start with a runnable path, then inspect exactly how extraction, typed state, correction, and evaluation work.</p>
+          <a class="button button-primary" href="/docs/">Open documentation <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="docs-list reveal">
+          <a href="/docs/#quick-start"><span>01</span><strong>Quick start</strong><em>Build from selected chats</em></a>
+          <a href="/docs/#mini-me"><span>02</span><strong>Mini-Me</strong><em>One conversational setting</em></a>
+          <a href="/docs/#artifacts"><span>03</span><strong>Artifact map</strong><em>What each file proves</em></a>
+          <a href="/docs/#evaluation"><span>04</span><strong>Evaluation</strong><em>Eight axes, no clone score</em></a>
+        </div>
+      </section>
+
+      <section class="limits section" id="limits" aria-labelledby="limits-title">
+        <div class="limits-title reveal">
+          <p class="kicker">Experimental means bounded</p>
+          <h2 id="limits-title">What it does not claim.</h2>
+        </div>
+        <div class="limit-list reveal">
+          <p><span>Not a complete person</span> Chats are partial, selected, relationship-specific evidence.</p>
+          <p><span>Not autonomous</span> The system cannot send, promise, transact, or represent the owner.</p>
+          <p><span>Not finished</span> Automatic typed-state extraction and complete deletion propagation remain incomplete.</p>
+          <p><span>Not an official API</span> WhatsApp for Mac is version-sensitive; <code>wacli</code> is a third-party mirror.</p>
+        </div>
+      </section>
+
+      <section class="closing" aria-labelledby="closing-title">
+        <p class="kicker">Private by default</p>
+        <h2 id="closing-title">Build something you can inspect before something that can imitate.</h2>
+        <div>
+          <a class="button button-primary" href="/docs/">Start with the docs <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="https://github.com/Amal-David/whatsapp-llm">View source <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Digital Self</span></a>
+      <p>Experimental local-first tools for authorized WhatsApp evidence.</p>
+      <p>MIT · <a href="https://github.com/Amal-David/whatsapp-llm">GitHub</a></p>
+    </footer>
+  </body>
+</html>

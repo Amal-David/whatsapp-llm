@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0a0d0c">
+    <meta name="description" content="Documentation for Digital Self, the local-first WhatsApp evidence toolkit.">
+    <title>Documentation - Digital Self</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/docs/docs.css">
+    <script src="/main.js" defer></script>
+  </head>
+  <body class="docs-page">
+    <a class="skip-link" href="#docs-main">Skip to documentation</a>
+    <header class="site-header is-scrolled" data-header>
+      <a class="brand" href="/" aria-label="Digital Self home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Digital Self</span>
+      </a>
+      <nav aria-label="Documentation navigation">
+        <a href="/">Overview</a>
+        <a href="#quick-start">Quick start</a>
+        <a href="#artifacts">Artifacts</a>
+        <a class="nav-action" href="https://github.com/Amal-David/whatsapp-llm">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <div class="docs-shell">
+      <aside class="docs-sidebar" aria-label="On this page">
+        <p>Documentation</p>
+        <nav>
+          <a data-doc-link href="#start">Start here</a>
+          <a data-doc-link href="#quick-start">Quick start</a>
+          <a data-doc-link href="#digital-self">Multi-chat Digital Self</a>
+          <a data-doc-link href="#mini-me">Mini-Me</a>
+          <a data-doc-link href="#artifacts">12 guided artifacts</a>
+          <a data-doc-link href="#evaluation">Evaluation</a>
+          <a data-doc-link href="#privacy">Privacy and limits</a>
+          <a data-doc-link href="#development">Development</a>
+        </nav>
+        <div class="sidebar-note">
+          <span>Current status</span>
+          <strong>Experimental</strong>
+          <p>No complete person, no autonomous authority.</p>
+        </div>
+      </aside>
+
+      <main class="docs-main" id="docs-main">
+        <section class="docs-hero" id="start">
+          <p class="kicker">Documentation · v0.1 experimental</p>
+          <h1>Build from evidence,<br>not from mythology.</h1>
+          <p>Digital Self turns selected WhatsApp conversations into artifacts you can inspect, scope, correct, and judge. This page is the shortest path from install to a reviewable run.</p>
+          <div class="docs-hero-links">
+            <a class="button button-primary" href="#quick-start">Start locally <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="https://github.com/Amal-David/whatsapp-llm/blob/main/docs/digital-self-explainer.md">Full explainer <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
+
+        <section class="doc-section" id="quick-start">
+          <div class="doc-heading"><span>01</span><div><p class="kicker">Quick start</p><h2>Install the local toolkit.</h2></div></div>
+          <p>The core package requires Python 3.10 or newer. WhatsApp evidence stays on the machine unless you deliberately connect another provider.</p>
+          <div class="code-block">
+            <button type="button" data-copy="#install-command" aria-label="Copy install command">Copy</button>
+            <pre id="install-command"><code>git clone https://github.com/Amal-David/whatsapp-llm
+cd whatsapp-llm
+pip install -e .</code></pre>
+          </div>
+          <div class="notice"><strong>Compatibility note</strong><p>The project is called Digital Self. The installed command remains <code>living-brain</code> so existing scripts do not break.</p></div>
+        </section>
+
+        <section class="doc-section" id="digital-self">
+          <div class="doc-heading"><span>02</span><div><p class="kicker">Approach B</p><h2>Build across selected chats.</h2></div></div>
+          <p>The multi-chat workflow separates owner evidence, relationship context, and owner self-report. It produces <code>digital_self.v1</code>, a portable profile with hashes and aggregates rather than owner message bodies.</p>
+          <h3>1. List sources</h3>
+          <p>WhatsApp for Mac is opened through SQLite read-only mode. Listing chats does not print message bodies.</p>
+          <div class="code-block"><button type="button" data-copy="#list-command" aria-label="Copy chat listing command">Copy</button><pre id="list-command"><code>living-brain self chats --source whatsapp-mac</code></pre></div>
+          <h3>2. Interview the owner</h3>
+          <div class="code-block"><button type="button" data-copy="#interview-command" aria-label="Copy interview command">Copy</button><pre id="interview-command"><code>living-brain self interview \
+  --owner-name "Your Name" \
+  --output ./private/self-interview.yaml</code></pre></div>
+          <h3>3. Build and validate</h3>
+          <div class="code-block"><button type="button" data-copy="#build-command" aria-label="Copy build command">Copy</button><pre id="build-command"><code>living-brain self build \
+  --source whatsapp-mac \
+  --chat "first-chat-id" \
+  --chat "second-chat-id" \
+  --owner-name "Your Name" \
+  --interview ./private/self-interview.yaml \
+  --output ./private/digital-self.json
+
+living-brain self validate ./private/digital-self.json</code></pre></div>
+          <p>Use <code>--all-chats</code> only after reviewing the source list. For a local <code>wacli</code> mirror, pass <code>--source wacli --path ~/.wacli/wacli.db</code>.</p>
+        </section>
+
+        <section class="doc-section" id="mini-me">
+          <div class="doc-heading"><span>03</span><div><p class="kicker">Approach A</p><h2>Build a relationship-scoped Mini-Me.</h2></div></div>
+          <p>Mini-Me asks a narrower question: how does one selected person tend to reply in this conversational setting? It starts with an authorized WhatsApp text export.</p>
+          <div class="code-block"><button type="button" data-copy="#workbench-command" aria-label="Copy workbench command">Copy</button><pre id="workbench-command"><code>living-brain workbench --port 7861</code></pre></div>
+          <ol class="doc-steps">
+            <li><span>01</span><div><strong>Upload</strong><p>Choose an export and select the participant whose messages may be used.</p></div></li>
+            <li><span>02</span><div><strong>Consent</strong><p>Confirm authority before the dataset is generated.</p></div></li>
+            <li><span>03</span><div><strong>Separate</strong><p>Third-party messages are withheld by default; target replies are redacted.</p></div></li>
+            <li><span>04</span><div><strong>Hold out</strong><p>Whole conversations, not adjacent messages, define train and evaluation splits.</p></div></li>
+          </ol>
+          <p>The archive includes canonical examples, style summaries, training-ready rows, preference pairs, and held-out evaluation rows. Keep the result relationship-scoped unless broader evidence supports generalization.</p>
+        </section>
+
+        <section class="doc-section" id="artifacts">
+          <div class="doc-heading"><span>04</span><div><p class="kicker">Guided demo</p><h2>The 12 artifact receipts.</h2></div></div>
+          <p>Run a deterministic synthetic walkthrough. It reads no WhatsApp data and calls no external model.</p>
+          <div class="code-block"><button type="button" data-copy="#demo-command" aria-label="Copy guided demo command">Copy</button><pre id="demo-command"><code>living-brain brain guide \
+  --demo \
+  --workspace ./private/digital-self-demo \
+  --as-of 2026-07-11T12:00:00+00:00</code></pre></div>
+          <div class="artifact-table" role="table" aria-label="Guided run artifacts">
+            <div role="row"><span role="cell">01</span><strong role="cell">Source selection</strong><p role="cell">Selected fixture and external-access receipt</p></div>
+            <div role="row"><span role="cell">02</span><strong role="cell">Initial state</strong><p role="cell">Weak, stale, and scoped evidence fixture</p></div>
+            <div role="row"><span role="cell">03</span><strong role="cell">Coverage before</strong><p role="cell">Missing or weak layers and next questions</p></div>
+            <div role="row"><span role="cell">04</span><strong role="cell">Adaptive interview</strong><p role="cell">Gap-selected questions and synthetic answers</p></div>
+            <div role="row"><span role="cell">05</span><strong role="cell">Interviewed state</strong><p role="cell">Version after owner-backed state is added</p></div>
+            <div role="row"><span role="cell">06</span><strong role="cell">Inspection</strong><p role="cell">Redacted view before correction</p></div>
+            <div role="row"><span role="cell">07</span><strong role="cell">Correction</strong><p role="cell">Receipt linking old item to successor</p></div>
+            <div role="row"><span role="cell">08</span><strong role="cell">Final state</strong><p role="cell">Versioned state after correction</p></div>
+            <div role="row"><span role="cell">09</span><strong role="cell">Coverage after</strong><p role="cell">Before/after comparison</p></div>
+            <div role="row"><span role="cell">10</span><strong role="cell">Simulation</strong><p role="cell">Grounded draft, citations, assumptions, authority denial</p></div>
+            <div role="row"><span role="cell">11</span><strong role="cell">Evaluation</strong><p role="cell">Eight independent axes and hard-gated result</p></div>
+            <div role="row"><span role="cell">12</span><strong role="cell">Run summary</strong><p role="cell">Status, paths, version, questions, result</p></div>
+          </div>
+        </section>
+
+        <section class="doc-section" id="evaluation">
+          <div class="doc-heading"><span>05</span><div><p class="kicker">No clone score</p><h2>Judge independent failure modes.</h2></div></div>
+          <p>The typed-state evaluator does not collapse human representation into one flattering number.</p>
+          <div class="axis-grid">
+            <p><span>01</span>Behavioral fidelity</p><p><span>02</span>Temporal correctness</p>
+            <p><span>03</span>Relationship isolation</p><p><span>04</span>Autobiographical attribution</p>
+            <p><span>05</span>Decision behavior</p><p><span>06</span>Confidence calibration</p>
+            <p><span>07</span>Privacy and authority</p><p><span>08</span>Explicit owner judgment</p>
+          </div>
+          <div class="notice notice-coral"><strong>Hard gate</strong><p>Privacy failures block a pass. Owner approval is supplied by the owner, not guessed by the model.</p></div>
+        </section>
+
+        <section class="doc-section" id="privacy">
+          <div class="doc-heading"><span>06</span><div><p class="kicker">Boundaries</p><h2>Keep the experiment private.</h2></div></div>
+          <ul class="boundary-list">
+            <li><strong>Partial evidence</strong><span>Chats show selected behavior, not a complete person or hidden motives.</span></li>
+            <li><strong>Private sources</strong><span>Keep chats, keys, interviews, profiles, evaluation rows, and state snapshots out of source control.</span></li>
+            <li><strong>Version-sensitive access</strong><span>WhatsApp for Mac uses a private schema; <code>wacli</code> is not an official API.</span></li>
+            <li><strong>Incomplete deletion</strong><span>Complete propagation through every derived artifact is not implemented yet.</span></li>
+            <li><strong>No authority</strong><span>Generated output cannot send, promise, transact, or represent the owner.</span></li>
+          </ul>
+        </section>
+
+        <section class="doc-section" id="development">
+          <div class="doc-heading"><span>07</span><div><p class="kicker">Development</p><h2>Verify the repository.</h2></div></div>
+          <div class="code-block"><button type="button" data-copy="#test-command" aria-label="Copy test command">Copy</button><pre id="test-command"><code>pip install -e ".[dev]"
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest tests -q -o addopts=''
+python -m compileall -q living_brain tests</code></pre></div>
+          <p>CI repeats tests, compilation, CLI smoke checks, package builds, Ruff, and mypy on Python 3.10, 3.11, and 3.12.</p>
+          <div class="source-links">
+            <a href="https://github.com/Amal-David/whatsapp-llm/blob/main/docs/digital-self-explainer.md"><strong>Digital Self explainer</strong><span>Full extraction, conversion, artifact, and evaluation detail ↗</span></a>
+            <a href="https://github.com/Amal-David/whatsapp-llm/blob/main/docs/digital-brain-poc.md"><strong>Typed-state PoC</strong><span>Schemas, migration, correction, simulation, and verification ↗</span></a>
+            <a href="https://github.com/Amal-David/whatsapp-llm/tree/main/research/digital-self-council"><strong>Research council</strong><span>Evidence corpus, synthesis, constraints, and non-goals ↗</span></a>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Digital Self</span></a>
+      <p>Documentation for an experimental local-first toolkit.</p>
+      <p>MIT · <a href="https://github.com/Amal-David/whatsapp-llm">GitHub</a></p>
+    </footer>
+  </body>
+</html>
