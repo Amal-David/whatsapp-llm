@@ -3,6 +3,9 @@
 An experimental, local-first toolkit for building inspectable representations
 of one person from authorized WhatsApp conversations.
 
+**Website:** [whatsapp-llm.pages.dev](https://whatsapp-llm.pages.dev/) ·
+**Documentation:** [whatsapp-llm.pages.dev/docs](https://whatsapp-llm.pages.dev/docs/)
+
 The project explores two scopes:
 
 | Approach | Input | Result |
