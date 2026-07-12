@@ -1,9 +1,11 @@
-# Evidence-Grounded Digital Brain Proof Of Concept
+# Typed Digital Self Proof Of Concept
 
 This document connects the public research council to the implemented
-`digital_brain.v2` proof of concept. The system represents selected, authorized
-evidence about a person. It does not claim to reconstruct a complete mind,
-recover hidden motives, or confer authority to act as that person.
+`digital_brain.v2` typed-state proof of concept. The schema name is a technical
+compatibility identifier; the project itself is an experimental Digital Self
+toolkit. The system represents selected, authorized evidence about a person. It
+does not claim to reconstruct a complete mind, recover hidden motives, or confer
+authority to act as that person.
 
 ## Research Foundation
 
@@ -37,7 +39,7 @@ not the source of truth.
 ```mermaid
 flowchart LR
     A["Authorized local evidence"] --> B["Versioned evidence and provenance"]
-    B --> C["Typed digital-brain state"]
+    B --> C["Typed Digital Self state"]
     C --> D["Coverage and owner questions"]
     D --> C
     C --> E["Situation-scoped retrieval"]
@@ -281,7 +283,7 @@ claim status remain separate evidence-quality controls.
 
 ## Risks And Known Limitations
 
-- This is not a complete digital brain, consciousness model, clinical model, or
+- This is not a complete person, consciousness model, clinical model, or
   substitute for the person.
 - The complete one-command v2 guided flow currently uses a synthetic fixture.
   Real local sources build v1 first, then use `brain migrate` and the v2 API/CLI.

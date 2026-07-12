@@ -1,11 +1,28 @@
-# WhatsApp LLM
+# Digital Self
 
-Local tools for building an evidence-grounded digital self from authorized
-WhatsApp conversations, owner interviews, relationship-specific behavior,
-time-aware memory, and optional style tuning.
+An experimental, local WhatsApp LLM toolkit for exploring what authorized
+conversations can teach a model about one person's writing style, memories, and
+relationship-specific behavior.
 
-The package is still named `living-brain`, and the CLI command is
-`living-brain`.
+This project does not reconstruct a person or a mind. It builds reviewable
+artifacts from selected evidence, keeps uncertainty visible, and leaves the
+owner in control of corrections and judgment.
+
+The installed package and CLI command remain `living-brain` for compatibility.
+That is a technical identifier, not the product claim.
+
+## Choose An Approach
+
+| Approach | Start with | What it builds | Best for |
+| --- | --- | --- | --- |
+| **Mini-Me** | One person's messages, usually from one selected chat | Style examples, prompt cards, training rows, preference pairs, and held-out evaluations | Learning how someone tends to write in a particular conversational setting |
+| **Digital Self** | The owner's messages across multiple selected chats, plus an optional owner interview | A versioned identity profile with evidence, time, uncertainty, relationship context, memory, and optional typed state | Exploring a broader, still incomplete representation across relationships and time |
+
+Mini-Me is the playful, narrow path. Digital Self is the broader research path.
+Neither is a complete replica, and adding more chats does not automatically make
+the result more truthful. Read the
+[`Digital Self explainer`](docs/digital-self-explainer.md) for the complete
+extraction, conversion, training, and evaluation flow.
 
 ## What It Does
 
@@ -14,7 +31,7 @@ The package is still named `living-brain`, and the CLI command is
 - Build a versioned self model with provenance, confidence, validity windows,
   contradictions, and owner confirmation.
 - Reproduce a ten-seat, 187-paper research council for human representation.
-- Exercise a typed, versioned digital-brain PoC with coverage, correction,
+- Exercise a typed, versioned self-model PoC with coverage, correction,
   deliberation, and hard-gated evaluation.
 - Keep global identity separate from relationship-specific communication style.
 - Evaluate profile-only and retrieval-backed behavior on held-out chats and
@@ -39,7 +56,7 @@ not designed for deceptive impersonation or detector evasion.
 | WhatsApp parsing | Participant discovery, conversation splitting, system/media filtering, JSONL export |
 | Digital self | Guided owner interview, read-only multi-chat sources, versioned claims, temporal validity |
 | Research council | Ten bounded seats, independent cross-review, 187 unique papers, evidence map, synthesis |
-| Digital brain PoC | Twelve typed state layers, deterministic migration, consolidation, simulation, correction |
+| Typed self PoC | Twelve typed state layers, deterministic migration, consolidation, simulation, correction |
 | Relationships | Pseudonymous per-chat style deltas without treating contacts' words as owner identity |
 | Style analysis | Length, emoji, punctuation, capitalization, common phrases, response behavior |
 | Dataset workbench | Gradio UI, participant picker, consent gate, ZIP artifact download |
@@ -74,7 +91,7 @@ pip install -e ".[all]"
 
 Use `.[train]` only when you want the Unsloth-backed training stack.
 
-## General Digital Self
+## Multi-Chat Digital Self
 
 The recommended architecture is layered:
 
@@ -152,9 +169,9 @@ The private suite may contain held-out contact prompts and owner replies. It is
 written with owner-only permissions. The summary contains counts and coverage
 only, so it can be inspected without reproducing dialogue.
 
-## Digital Brain Proof Of Concept
+## Typed Self Proof Of Concept
 
-The research-backed v2 PoC treats the canonical self as typed, versioned state
+The research-backed v2 PoC treats the canonical model as typed, versioned state
 with provenance, confidence, time, sensitivity, ownership, and context scope. It
 does not treat an LLM, vector index, prompt, or style adapter as the person.
 
@@ -183,10 +200,11 @@ sources currently build `digital_self.v1` first and migrate with
 `living-brain brain migrate`; automated event-to-state extraction, complete
 deletion propagation, and autonomous representation are intentionally absent.
 
-## Persona Dataset Quick Start
+## Mini-Me Quick Start
 
-The export-based workbench remains available when the goal is a portable style
-dataset or a fine-tuning artifact.
+Mini-Me is the export-based path for learning one selected person's
+conversational style. It produces a portable style dataset or fine-tuning
+artifact, not a global identity model.
 
 Export a WhatsApp chat as text:
 
@@ -432,6 +450,7 @@ living_brain/
   style/         dataset formatting, adapter training, adapter management
   main.py        CLI entry point
 docs/
+  digital-self-explainer.md
   digital-brain-poc.md
   persona-methods-study.md
   persona-authenticity-source-corpus.jsonl
@@ -452,9 +471,9 @@ tests/
   official WhatsApp API or guaranteed complete archive.
 - Keep the pseudonym key, interview, profile, and private evaluation suite out of
   source control.
-- Treat generated brain snapshots, guided-run artifacts, and council runtime
+- Treat generated state snapshots, guided-run artifacts, and council runtime
   directories as private local data; only the public research corpus is committed.
-- Brain snapshots can contain authorized owner evidence payloads. Use the redacted
+- State snapshots can contain authorized owner evidence payloads. Use the redacted
   inspection command for review; do not treat the canonical JSON as a safe export.
 - Leave third-party context disabled unless every included participant gave permission.
 - Review every generated dataset before training.
